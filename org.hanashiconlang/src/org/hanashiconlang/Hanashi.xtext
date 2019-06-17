@@ -1,0 +1,80 @@
+grammar org.hanashiconlang.Hanashi
+
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+
+generate hanashi "http://www.hanashiconlang.org/Hanashi"
+
+Document hidden(WS):
+	(languages+=Language)*
+	(declarations+=Declaration)*
+;
+
+Language:
+	"\\language" name=ID title=STRING
+;
+	
+Declaration:
+	Section
+|   Lexeme
+;
+
+Section:
+	"\\section" title=STRING name=ID
+	text=FreeText
+	(parts+=Declaration)*
+	"\\end"
+;
+FreeText:
+	{FreeText} item+=(TextItem | Syntax | Gloss)*
+;
+TextItem:
+	text=(ID | STRING | ANY_OTHER | "?" | "*" | "+" | "-" | "(" | ")" | "_")
+;
+Gloss:
+	"\\\\" language=[Language] ":" (items+=GlossItem)* "\\"
+;
+GlossItem:
+	{GlossLexeme} lexeme=[Lexeme]
+|	{GlossOther} (other+=STRING | ANY_OTHER | "?" | "*" | "+" | "-" | "(" | ")")+
+|	{GlossSep} "_"
+;
+
+Lexeme:
+	"\\lexeme" language=[Language] name=ID ("#" tags+=ID)*
+	entries+=LexemeEntry*
+	"\\end"
+;
+LexemeEntry:
+	language=[Language] (long?=":")? ":" text=FreeText
+;
+
+Syntax:
+	"\\syntax" (rules+=Rule)+ "\\end"
+;
+Rule:
+	name=ID "=" production=Production
+;
+Production:
+	ChoiceProduction
+;
+ChoiceProduction:
+	SeqProduction ({ChoiceProduction.left=current} op=("+" | "-" | "*" | "&" | "|") right=SeqProduction)*
+;
+SeqProduction:
+	(seq+=SimpleProduction)+
+;
+SimpleProduction:
+	{NonTerminal} ref=[Rule]
+|	{Terminal} text=STRING
+|	{Weighted} weight=FLOAT
+|	"(" Production ")"
+|	"[" {Optional} inner=Production "]"
+|	"{" {Repeated} inner=Production "}"
+;
+
+terminal INSTRUCTION: '\\' ID;
+terminal ID: ('A'..'Z' | 'a'..'z') ('A'..'Z' | 'a'..'z' | '0'..'9' | '-' | '\'')*;
+terminal FLOAT: ('0'..'9')+ ("." ('0'..'9')*)?;
+terminal STRING: '"' (!'"')* '"';
+terminal WS: ' ' | '\n' | '\r' | '\t';
+terminal ANY_OTHER: .;
