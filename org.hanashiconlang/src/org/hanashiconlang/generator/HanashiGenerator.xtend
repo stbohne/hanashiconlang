@@ -23,6 +23,20 @@ import org.hanashiconlang.hanashi.GlossSep
 import org.hanashiconlang.hanashi.GlossItem
 import org.hanashiconlang.hanashi.Gloss
 import org.hanashiconlang.hanashi.Language
+import org.hanashiconlang.hanashi.Syntax
+import org.hanashiconlang.hanashi.Terminal
+import java.util.HashSet
+import org.hanashiconlang.hanashi.NonTerminal
+import java.util.stream.IntStream
+import org.hanashiconlang.hanashi.Weighted
+import org.hanashiconlang.hanashi.Optional
+import org.hanashiconlang.hanashi.Repeated
+import org.hanashiconlang.hanashi.Choice
+import org.hanashiconlang.hanashi.Sequence
+import java.util.stream.Stream
+import java.util.Arrays
+import java.util.Dictionary
+import java.util.Map
 
 /**
  * Generates code from your model files on save.
@@ -30,6 +44,28 @@ import org.hanashiconlang.hanashi.Language
  * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#code-generation
  */
 class HanashiGenerator extends AbstractGenerator {
+	
+	dispatch def IntStream getTerminals(Terminal prod) {
+		prod.text.codePoints
+	}
+	dispatch def IntStream getTerminals(NonTerminal prod) {
+		getTerminals(prod.target.production)
+	}
+	dispatch def IntStream getTerminals(Weighted prod) {
+		IntStream.empty
+	}
+	dispatch def IntStream getTerminals(Optional prod) {
+		getTerminals(prod.inner)
+	}
+	dispatch def IntStream getTerminals(Repeated prod) {
+		getTerminals(prod.inner)
+	}
+	dispatch def IntStream getTerminals(Choice prod) {
+		getTerminals(prod.left).concat(getTerminals(prod.right))
+	}
+	dispatch def IntStream getTerminals(Sequence prod) {
+		prod.seq.map[p| getTerminals(p) ].stream().flatMap[s| s.boxed() ].mapToInt[v| v]
+	}
 	
 	def title(Lexeme l, Language lang) {
 		freeTexts2String(l.entries.findFirst[e| 
@@ -93,6 +129,9 @@ class HanashiGenerator extends AbstractGenerator {
 	dispatch def generateFreeText(Gloss g, Language lang) {
 		generateGlossItems(g.items, lang)
 	}
+	dispatch def generateFreeText(Syntax s, Language lang) {
+		""
+	}
 	
 	def freeTexts2String(EList<FreeText> ts, Language lang) 
 		'''«FOR t: ts.strip(Whitespace)»«freeText2String(t, lang)»«ENDFOR»'''
@@ -107,6 +146,10 @@ class HanashiGenerator extends AbstractGenerator {
 		'''«cr.target.title(lang)»'''
 	dispatch def freeText2String(Gloss g, Language lang) 
 		'''«glossItems2String(g.items, lang)»'''
+	dispatch def freeText2String(Syntax s, Language lang) {
+		""
+	}
+		
 	
 	def generateGlossItems(EList<GlossItem> gs, Language lang) 
 		'''«FOR gi: gs.strip(GlossWhitespace)»«generateGlossItem(gi, lang)»«ENDFOR»'''

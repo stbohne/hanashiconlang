@@ -81,13 +81,13 @@ Production:
 	ChoiceProduction
 ;
 ChoiceProduction:
-	SeqProduction ({ChoiceProduction.left=current} OptWS op=("+" | "-" | "*" | "&" | "|") OptWS right=SeqProduction)*
+	SeqProduction ({Choice.left=current} OptWS op=("+" | "-" | "*" | "&" | "|") OptWS right=SeqProduction)*
 ;
 SeqProduction:
-	(seq+=SimpleProduction)+
+	{Sequence} seq+=SimpleProduction (OptWS seq+=SimpleProduction)*
 ;
 SimpleProduction:
-	{NonTerminal} ref=[Rule]
+	{NonTerminal} target=[Rule]
 |	{Terminal} text=STRING
 |	{Weighted} weight=FLOAT
 |	"(" OptWS Production OptWS ")"
