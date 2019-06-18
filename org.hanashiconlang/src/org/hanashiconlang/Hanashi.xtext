@@ -4,13 +4,14 @@ import "http://www.eclipse.org/emf/2002/Ecore" as ecore
 
 generate hanashi "http://www.hanashiconlang.org/Hanashi"
 
-Document hidden(WS):
-	(languages+=Language)*
-	(declarations+=Declaration)*
+Document: {Document}
+	(OptWS languages+=Language)* 
+	(OptWS parts+=Declaration)* OptWS
 ;
+OptWS: WS*;
 
 Language:
-	"\\language" name=ID title=STRING
+	"\\language" OptWS name=ID OptWS title=STRING
 ;
 	
 Declaration:
@@ -19,46 +20,68 @@ Declaration:
 ;
 
 Section:
-	"\\section" title=STRING name=ID
-	text=FreeText
-	(parts+=Declaration)*
+	"\\section" OptWS title=STRING OptWS name=ID OptWS ":" 
+	(texts+=FreeText)*
+	(parts+=Declaration OptWS)*
 	"\\end"
 ;
 FreeText:
-	{FreeText} item+=(TextItem | Syntax | Gloss)*
+	TextItem
+|	Whitespace
+| 	Syntax 
+| 	Gloss 
+| 	CrossRef 
+| 	Footnote
 ;
 TextItem:
-	text=(ID | STRING | ANY_OTHER | "?" | "*" | "+" | "-" | "(" | ")" | "_")
+	text=(ID | STRING | FLOAT | ANY_OTHER | 
+	      "*" | "+" | "-" | "&" | "|" | "(" | ")" | "[" | "]" | "{" | "}" | "_")
+;
+Whitespace:
+	{Whitespace} texts+=WS+
+;
+CrossRef:
+	{SectionCrossRef} "\\s" OptWS target=[Section]
+|	{LexemeCrossRef} "\\l" OptWS language=[Language] target=[Lexeme]
+|	{SyntaxCrossRef} "\\r" OptWS target=[Rule]
+|   {FootnoteCrossRef} "\\f" OptWS target=[Footnote]
+;
+Footnote:
+	"\\footnote" OptWS name=ID ":" (texts+=FreeText)* "\\end"
 ;
 Gloss:
-	"\\\\" language=[Language] ":" (items+=GlossItem)* "\\"
+	"\\\\" OptWS language=[Language] OptWS ":" (items+=GlossItem)* "\\"
 ;
 GlossItem:
-	{GlossLexeme} lexeme=[Lexeme]
-|	{GlossOther} (other+=STRING | ANY_OTHER | "?" | "*" | "+" | "-" | "(" | ")")+
+	{GlossLexeme} lexeme=[Lexeme] ("#" tags+=ID)*
+|	{GlossOther} (others+=STRING | FLOAT | ANY_OTHER | 
+		"*" | "+" | "-" | "&" | "|" | "(" | ")" | "[" | "]" | "{" | "}")+
+|	{GlossWhitespace} WS+
 |	{GlossSep} "_"
 ;
 
 Lexeme:
-	"\\lexeme" language=[Language] name=ID ("#" tags+=ID)*
-	entries+=LexemeEntry*
-	"\\end"
+	"\\lexeme" OptWS language=[Language] OptWS name=ID 
+	OptWS ("#" tags+=ID OptWS)* ":" OptWS
+	(OptWS entries+=LexemeEntry)*
+	OptWS "\\end"
 ;
 LexemeEntry:
-	language=[Language] (long?=":")? ":" text=FreeText
+	type=("\\short" | "\\long" | "\\derived") OptWS language=[Language] OptWS  
+	("#" tags+=ID OptWS)* ":" (texts+=FreeText)* 
 ;
 
-Syntax:
-	"\\syntax" (rules+=Rule)+ "\\end"
+Syntax: {Syntax}
+	"\\syntax" OptWS (rules+=Rule OptWS)* "\\end"
 ;
 Rule:
-	name=ID "=" production=Production
+	name=ID OptWS "=" OptWS production=Production
 ;
 Production:
 	ChoiceProduction
 ;
 ChoiceProduction:
-	SeqProduction ({ChoiceProduction.left=current} op=("+" | "-" | "*" | "&" | "|") right=SeqProduction)*
+	SeqProduction ({ChoiceProduction.left=current} OptWS op=("+" | "-" | "*" | "&" | "|") OptWS right=SeqProduction)*
 ;
 SeqProduction:
 	(seq+=SimpleProduction)+
@@ -67,9 +90,9 @@ SimpleProduction:
 	{NonTerminal} ref=[Rule]
 |	{Terminal} text=STRING
 |	{Weighted} weight=FLOAT
-|	"(" Production ")"
-|	"[" {Optional} inner=Production "]"
-|	"{" {Repeated} inner=Production "}"
+|	"(" OptWS Production OptWS ")"
+|	"[" OptWS {Optional} inner=Production OptWS "]"
+|	"{" OptWS {Repeated} inner=Production OptWS "}"
 ;
 
 terminal INSTRUCTION: '\\' ID;

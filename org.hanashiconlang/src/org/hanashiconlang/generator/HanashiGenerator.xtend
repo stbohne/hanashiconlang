@@ -7,6 +7,22 @@ import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.xtext.generator.AbstractGenerator
 import org.eclipse.xtext.generator.IFileSystemAccess2
 import org.eclipse.xtext.generator.IGeneratorContext
+import org.hanashiconlang.hanashi.Section
+import org.hanashiconlang.hanashi.FreeText
+import org.hanashiconlang.hanashi.TextItem
+import org.hanashiconlang.hanashi.SectionCrossRef
+import org.hanashiconlang.hanashi.Lexeme
+import org.hanashiconlang.hanashi.Document
+import org.hanashiconlang.hanashi.LexemeCrossRef
+import org.eclipse.emf.common.util.EList
+import org.hanashiconlang.hanashi.GlossLexeme
+import org.hanashiconlang.hanashi.Whitespace
+import org.hanashiconlang.hanashi.GlossWhitespace
+import org.hanashiconlang.hanashi.GlossOther
+import org.hanashiconlang.hanashi.GlossSep
+import org.hanashiconlang.hanashi.GlossItem
+import org.hanashiconlang.hanashi.Gloss
+import org.hanashiconlang.hanashi.Language
 
 /**
  * Generates code from your model files on save.
@@ -14,12 +30,127 @@ import org.eclipse.xtext.generator.IGeneratorContext
  * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#code-generation
  */
 class HanashiGenerator extends AbstractGenerator {
+	
+	def title(Lexeme l, Language lang) {
+		freeTexts2String(l.entries.findFirst[e| 
+			e.type=="\\short" && e.language == l.language
+		].texts, lang)
+	}
+	def shortString(Lexeme l, Language lang) {
+		freeTexts2String(l.entries.findFirst[e| 
+			e.type=="\\short" && e.language == lang
+		].texts, lang)
+	}
+	def longString(Lexeme l, Language lang) {
+		freeTexts2String(l.entries.findFirst[e| 
+			e.type=="\\long" && e.language == lang
+		].texts, lang)
+	}
+	def <T> strip(Iterable<T> list, Class<? extends T> clazz) {
+		var list_ = list
+		while (!list_.nullOrEmpty && clazz.isInstance(list_.head))
+			list_ = list_.drop(1)
+		while (!list_.nullOrEmpty && clazz.isInstance(list_.last))
+			list_ = list_.take(list_.size - 1)
+		list_
+	}
 
 	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
-//		fsa.generateFile('greetings.txt', 'People to greet: ' + 
-//			resource.allContents
-//				.filter(Greeting)
-//				.map[name]
-//				.join(', '))
+		val lang = resource.contents.filter(Document).head.languages.head
+		fsa.generateFile('output.html', '''
+			<html>
+			<body>
+			«FOR d: resource.contents.filter(Document)»
+				«FOR p: d.parts»
+				«generateDeclaration(p, 1, lang)»
+				«ENDFOR»
+			«ENDFOR»
+			</body>
+			</html>
+		''')
+		
 	}
+	
+	def generateFreeTexts(EList<FreeText> ts, Language lang)
+		'''<p>
+		«FOR t: ts.strip(Whitespace)»«generateFreeText(t, lang)»«ENDFOR»
+		</p>'''
+	dispatch def generateFreeText(TextItem t, Language lang) {
+		t.text
+    }
+	dispatch def generateFreeText(Whitespace ws, Language lang) {
+		if (ws.texts.filter[t| t=="\n"].size >= 2) '''
+			</p>
+			<p>
+		'''
+		else
+			" "
+	}
+	dispatch def generateFreeText(SectionCrossRef cr, Language lang) 
+		'''<a href="#section$«cr.target.name»">«cr.target.title»</a>'''
+	dispatch def generateFreeText(LexemeCrossRef cr, Language lang) 
+		'''<a href="#lexeme$«cr.target.language.name»$«cr.target.name»">«cr.target.title(lang)»</a>'''
+	dispatch def generateFreeText(Gloss g, Language lang) {
+		generateGlossItems(g.items, lang)
+	}
+	
+	def freeTexts2String(EList<FreeText> ts, Language lang) 
+		'''«FOR t: ts.strip(Whitespace)»«freeText2String(t, lang)»«ENDFOR»'''
+	dispatch def freeText2String(TextItem t, Language lang) 
+		'''«t.text»'''
+	dispatch def freeText2String(Whitespace ws, Language lang) { 
+		" "
+	}
+	dispatch def freeText2String(SectionCrossRef cr, Language lang) 
+		'''«cr.target.title»'''
+	dispatch def freeText2String(LexemeCrossRef cr, Language lang) 
+		'''«cr.target.title(lang)»'''
+	dispatch def freeText2String(Gloss g, Language lang) 
+		'''«glossItems2String(g.items, lang)»'''
+	
+	def generateGlossItems(EList<GlossItem> gs, Language lang) 
+		'''«FOR gi: gs.strip(GlossWhitespace)»«generateGlossItem(gi, lang)»«ENDFOR»'''
+	dispatch def generateGlossItem(GlossLexeme gl, Language lang) '''
+		<a href="#lexeme$«gl.lexeme.language.name»$«gl.lexeme.name»">«gl.lexeme.title(lang)»<a/>'''
+	dispatch def generateGlossItem(GlossWhitespace ws, Language lang) {
+		" "
+	}
+	dispatch def generateGlossItem(GlossOther go, Language lang) 
+		'''«FOR o: go.others»«o»«ENDFOR»''' 
+	dispatch def generateGlossItem(GlossSep ws, Language lang) {
+		""
+	}
+	
+	def glossItems2String(EList<GlossItem> gs, Language lang) 
+		'''«FOR gi: gs.strip(GlossWhitespace)»«generateGlossItem(gi, lang)»«ENDFOR»'''
+	dispatch def glossItem2String(GlossLexeme gl, Language lang) 
+		'''«gl.lexeme.title(lang)»'''
+	dispatch def glossItem2String(GlossWhitespace ws, Language lang) {
+		" "
+	}
+	dispatch def glossItem2String(GlossOther go, Language lang) 
+		'''«FOR o: go.others»«o»«ENDFOR»''' 
+	dispatch def glossItem2String(GlossSep sep, Language lang) {
+		""
+	}
+	
+	dispatch def generateDeclaration(Section s, int depth, Language lang) '''
+		<h«depth» id="section$«s.name»">«s.title»</h1>
+		«generateFreeTexts(s.texts, lang)»
+		«FOR p: s.parts»
+		«generateDeclaration(p, depth + 1, lang)»
+		«ENDFOR»
+	'''
+	dispatch def generateDeclaration(Lexeme l, int depth, Language lang) '''
+		<h«depth» id="lexeme$«l.language.name»$«l.name»">
+			«l.language.title»
+			«l.title(lang)»
+		</h1>
+		<dl>
+			«FOR e: l.entries»
+			<dd>«e.language.title»</dd>
+			<dt>«generateFreeTexts(e.texts, lang)»<dt/>
+			«ENDFOR»
+		</dl>
+	'''
 }
