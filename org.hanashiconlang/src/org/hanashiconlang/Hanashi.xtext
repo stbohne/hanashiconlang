@@ -50,13 +50,15 @@ Footnote:
 	"\\footnote" OptWS name=ID ":" (texts+=FreeText)* "\\end"
 ;
 Gloss:
-	"\\\\" OptWS language=[Language] OptWS ":" (items+=GlossItem)* "\\"
+	"\\\\" OptWS language=[Language] OptWS ":" OptWS (words+=GlossWord (WS+ words+=GlossWord)* OptWS)? "\\"
+;
+GlossWord:
+	items+=GlossItem+
 ;
 GlossItem:
 	{GlossLexeme} lexeme=[Lexeme] ("#" tags+=ID)*
 |	{GlossOther} (others+=STRING | FLOAT | ANY_OTHER | 
 		"*" | "+" | "-" | "&" | "|" | "(" | ")" | "[" | "]" | "{" | "}")+
-|	{GlossWhitespace} WS+
 |	{GlossSep} "_"
 ;
 

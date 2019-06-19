@@ -3,40 +3,36 @@
  */
 package org.hanashiconlang.generator
 
+import java.util.stream.IntStream
+import org.eclipse.emf.common.util.EList
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.xtext.generator.AbstractGenerator
 import org.eclipse.xtext.generator.IFileSystemAccess2
 import org.eclipse.xtext.generator.IGeneratorContext
-import org.hanashiconlang.hanashi.Section
-import org.hanashiconlang.hanashi.FreeText
-import org.hanashiconlang.hanashi.TextItem
-import org.hanashiconlang.hanashi.SectionCrossRef
-import org.hanashiconlang.hanashi.Lexeme
+import org.hanashiconlang.hanashi.Choice
 import org.hanashiconlang.hanashi.Document
-import org.hanashiconlang.hanashi.LexemeCrossRef
-import org.eclipse.emf.common.util.EList
+import org.hanashiconlang.hanashi.FreeText
+import org.hanashiconlang.hanashi.Gloss
 import org.hanashiconlang.hanashi.GlossLexeme
-import org.hanashiconlang.hanashi.Whitespace
-import org.hanashiconlang.hanashi.GlossWhitespace
 import org.hanashiconlang.hanashi.GlossOther
 import org.hanashiconlang.hanashi.GlossSep
-import org.hanashiconlang.hanashi.GlossItem
-import org.hanashiconlang.hanashi.Gloss
+import org.hanashiconlang.hanashi.GlossWord
 import org.hanashiconlang.hanashi.Language
-import org.hanashiconlang.hanashi.Syntax
-import org.hanashiconlang.hanashi.Terminal
-import java.util.HashSet
+import org.hanashiconlang.hanashi.Lexeme
+import org.hanashiconlang.hanashi.LexemeCrossRef
 import org.hanashiconlang.hanashi.NonTerminal
-import java.util.stream.IntStream
-import org.hanashiconlang.hanashi.Weighted
 import org.hanashiconlang.hanashi.Optional
 import org.hanashiconlang.hanashi.Repeated
-import org.hanashiconlang.hanashi.Choice
+import org.hanashiconlang.hanashi.Section
+import org.hanashiconlang.hanashi.SectionCrossRef
 import org.hanashiconlang.hanashi.Sequence
-import java.util.stream.Stream
-import java.util.Arrays
-import java.util.Dictionary
-import java.util.Map
+import org.hanashiconlang.hanashi.Syntax
+import org.hanashiconlang.hanashi.Terminal
+import org.hanashiconlang.hanashi.TextItem
+import org.hanashiconlang.hanashi.Weighted
+import org.hanashiconlang.hanashi.Whitespace
+
+import static extension java.util.stream.IntStream.*
 
 /**
  * Generates code from your model files on save.
@@ -126,9 +122,11 @@ class HanashiGenerator extends AbstractGenerator {
 		'''<a href="#section$«cr.target.name»">«cr.target.title»</a>'''
 	dispatch def generateFreeText(LexemeCrossRef cr, Language lang) 
 		'''<a href="#lexeme$«cr.target.language.name»$«cr.target.name»">«cr.target.title(lang)»</a>'''
-	dispatch def generateFreeText(Gloss g, Language lang) {
-		generateGlossItems(g.items, lang)
-	}
+	dispatch def generateFreeText(Gloss g, Language lang) '''
+		<span style="display:inline-table">
+		    <span style="display:table-row; text-align:left">«generateGlossWordsText(g.words, lang)»</span>
+		    <span style="display:table-row; font-size:66%; line-height:20%; text-align:center">«generateGlossWordsInfo(g.words, lang)»</span>
+		</span>	'''
 	dispatch def generateFreeText(Syntax s, Language lang) {
 		""
 	}
@@ -145,32 +143,34 @@ class HanashiGenerator extends AbstractGenerator {
 	dispatch def freeText2String(LexemeCrossRef cr, Language lang) 
 		'''«cr.target.title(lang)»'''
 	dispatch def freeText2String(Gloss g, Language lang) 
-		'''«glossItems2String(g.items, lang)»'''
+		'''«glossWords2String(g.words, lang)»'''
 	dispatch def freeText2String(Syntax s, Language lang) {
 		""
 	}
 		
-	
-	def generateGlossItems(EList<GlossItem> gs, Language lang) 
-		'''«FOR gi: gs.strip(GlossWhitespace)»«generateGlossItem(gi, lang)»«ENDFOR»'''
-	dispatch def generateGlossItem(GlossLexeme gl, Language lang) '''
-		<a href="#lexeme$«gl.lexeme.language.name»$«gl.lexeme.name»">«gl.lexeme.title(lang)»<a/>'''
-	dispatch def generateGlossItem(GlossWhitespace ws, Language lang) {
-		" "
-	}
-	dispatch def generateGlossItem(GlossOther go, Language lang) 
+	def generateGlossWordsText(EList<GlossWord> gws, Language lang) 
+		'''«FOR gw: gws»<span style="display:table-cell; padding:0.1em">«FOR gi: gw.items»«generateGlossText(gi, lang)»«ENDFOR»</span>«ENDFOR»'''
+	dispatch def generateGlossText(GlossLexeme gl, Language lang) 
+		'''<a style="text-decoration: none" href="#lexeme$«gl.lexeme.language.name»$«gl.lexeme.name»" title="«gl.lexeme.longString(lang)»">«gl.lexeme.title(lang)»</a>'''
+	dispatch def generateGlossText(GlossOther go, Language lang) 
 		'''«FOR o: go.others»«o»«ENDFOR»''' 
-	dispatch def generateGlossItem(GlossSep ws, Language lang) {
+	dispatch def generateGlossText(GlossSep ws, Language lang) {
 		""
 	}
+	def generateGlossWordsInfo(EList<GlossWord> gws, Language lang) 
+		'''«FOR gw: gws»<span style="display:table-cell">«FOR gi: gw.items»«generateGlossInfo(gi, lang)»«ENDFOR»</span>«ENDFOR»'''
+	dispatch def generateGlossInfo(GlossLexeme gl, Language lang) 
+		'''«gl.lexeme.shortString(lang)»'''
+	dispatch def generateGlossInfo(GlossOther go, Language lang) 
+		'''«FOR o: go.others»«o»«ENDFOR»''' 
+	dispatch def generateGlossInfo(GlossSep ws, Language lang) {
+		"·"
+	}
 	
-	def glossItems2String(EList<GlossItem> gs, Language lang) 
-		'''«FOR gi: gs.strip(GlossWhitespace)»«generateGlossItem(gi, lang)»«ENDFOR»'''
+	def glossWords2String(EList<GlossWord> gws, Language lang) 
+		'''«FOR gw: gws»«FOR gi: gw.items»«glossItem2String(gi, lang)»«ENDFOR»«ENDFOR»'''
 	dispatch def glossItem2String(GlossLexeme gl, Language lang) 
 		'''«gl.lexeme.title(lang)»'''
-	dispatch def glossItem2String(GlossWhitespace ws, Language lang) {
-		" "
-	}
 	dispatch def glossItem2String(GlossOther go, Language lang) 
 		'''«FOR o: go.others»«o»«ENDFOR»''' 
 	dispatch def glossItem2String(GlossSep sep, Language lang) {
