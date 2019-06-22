@@ -16,7 +16,8 @@ Language:
 	
 Declaration:
 	Section
-|   Lexeme
+|   Lexicon
+|	Taxonomy
 ;
 
 Section:
@@ -32,45 +33,62 @@ FreeText:
 | 	Gloss 
 | 	CrossRef 
 | 	Footnote
+|   Table
 ;
 TextItem:
 	text=(ID | STRING | FLOAT | ANY_OTHER | 
 	      "*" | "+" | "-" | "&" | "|" | "(" | ")" | "[" | "]" | "{" | "}" | "_")
 ;
 Whitespace:
-	{Whitespace} texts+=WS+
+	{Whitespace} texts+=(WS | "\\br" | "\\p")+
 ;
 CrossRef:
-	{SectionCrossRef} "\\s" OptWS target=[Section]
-|	{LexemeCrossRef} "\\l" OptWS language=[Language] target=[Lexeme]
-|	{SyntaxCrossRef} "\\r" OptWS target=[Rule]
-|   {FootnoteCrossRef} "\\f" OptWS target=[Footnote]
+	{SectionCrossRef} "\\xs" OptWS target=[Section]
+|	{LexemeCrossRef} "\\xl" OptWS language=[Language] OptWS target=[Lexeme]
+|	{SyntaxCrossRef} "\\xr" OptWS target=[Rule]
+|   {FootnoteCrossRef} "\\xf" OptWS target=[Footnote]
 ;
 Footnote:
 	"\\footnote" OptWS name=ID ":" (texts+=FreeText)* "\\end"
 ;
+Table:
+	"\\table" OptWS name=ID ":" OptWS ("\\tr" OptWS rows+=TableRow OptWS)+ "\\end"
+;
+TableRow:
+	cols+=TableCol (OptWS cols+=TableCol)*
+;
+TableCol:
+	{TableCol} ("\\td" | header?="\\th") (texts+=FreeText)*
+;
+
 Gloss:
-	"\\\\" OptWS language=[Language] OptWS ":" OptWS (words+=GlossWord (WS+ words+=GlossWord)* OptWS)? "\\"
+	"\\gl" OptWS language=[Language] OptWS ":" OptWS (words+=GlossWord (WS+ words+=GlossWord)* OptWS)? "\\"
 ;
 GlossWord:
 	items+=GlossItem+
 ;
 GlossItem:
-	{GlossLexeme} lexeme=[Lexeme] ("#" tags+=ID)*
-|	{GlossOther} (others+=STRING | FLOAT | ANY_OTHER | 
-		"*" | "+" | "-" | "&" | "|" | "(" | ")" | "[" | "]" | "{" | "}")+
+	{GlossLexeme} lexeme=[Lexeme] (tags+=TagRef)*
+|	{GlossOther} (others+=(STRING | FLOAT | ANY_OTHER | 
+		"*" | "+" | "-" | "&" | "|" | "(" | ")" | "[" | "]" | "{" | "}"))+
 |	{GlossSep} "_"
 ;
 
+Lexicon:
+	"\\lexicon" OptWS language=[Language]
+	OptWS (lexemes+=Lexeme OptWS)*
+	"\\end"
+;
 Lexeme:
-	"\\lexeme" OptWS language=[Language] OptWS name=ID 
-	OptWS ("#" tags+=ID OptWS)* ":" OptWS
+	"\\lexeme" OptWS name=ID 
+	OptWS (tags+=TagRef OptWS)* ":" OptWS
 	(OptWS entries+=LexemeEntry)*
-	OptWS "\\end"
 ;
 LexemeEntry:
-	type=("\\short" | "\\long" | "\\derived") OptWS language=[Language] OptWS  
-	("#" tags+=ID OptWS)* ":" (texts+=FreeText)* 
+	(type="\\form" | 
+	 type=("\\gloss" | "\\translation" | "\\derived") OptWS language=[Language]
+	) OptWS  
+	(tags+=TagRef OptWS)* ":" (texts+=FreeText)* 
 ;
 
 Syntax: {Syntax}
@@ -97,8 +115,21 @@ SimpleProduction:
 |	"{" OptWS {Repeated} inner=Production OptWS "}"
 ;
 
+Taxonomy:
+	{Taxonomy} "\\taxonomy" (OptWS taxons+=Taxon)* OptWS "\\end"
+;
+Taxon:
+	"\\taxon" OptWS name=ID (texts+=FreeText)* (OptWS tags+=Tag)* (OptWS taxons+=Taxon)* OptWS "\\end"
+;
+Tag: 
+	"\\tag" OptWS name=ID (texts+=FreeText)* "\\end"
+;
+TagRef:
+	"#" tag=[Tag]
+;
+
 terminal INSTRUCTION: '\\' ID;
-terminal ID: ('A'..'Z' | 'a'..'z') ('A'..'Z' | 'a'..'z' | '0'..'9' | '-' | '\'')*;
+terminal ID: ('A'..'Z' | 'a'..'z') ('A'..'Z' | 'a'..'z' | '0'..'9')*;
 terminal FLOAT: ('0'..'9')+ ("." ('0'..'9')*)?;
 terminal STRING: '"' (!'"')* '"';
 terminal WS: ' ' | '\n' | '\r' | '\t';

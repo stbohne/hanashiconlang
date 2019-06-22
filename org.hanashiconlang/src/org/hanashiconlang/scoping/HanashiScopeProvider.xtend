@@ -12,6 +12,9 @@ import org.eclipse.xtext.EcoreUtil2
 import org.hanashiconlang.hanashi.Lexeme
 import org.hanashiconlang.hanashi.Gloss
 import org.eclipse.xtext.scoping.Scopes
+import org.hanashiconlang.hanashi.Lexicon
+import org.hanashiconlang.hanashi.TagRef
+import org.hanashiconlang.hanashi.Tag
 
 /**
  * This class contains custom scoping description.
@@ -24,10 +27,14 @@ class HanashiScopeProvider extends AbstractHanashiScopeProvider {
 		if (context instanceof GlossLexeme &&
 			reference == HanashiPackage.Literals.GLOSS_LEXEME__LEXEME) {
 			val gloss = EcoreUtil2.getContainerOfType(context, Gloss)
-			val lexemes = EcoreUtil2.getAllContentsOfType(EcoreUtil2.getRootContainer(context), Lexeme).filter([Lexeme l |
-				l.language == gloss.language 
+			val lexemes = EcoreUtil2.getAllContentsOfType(EcoreUtil2.getRootContainer(context), Lexeme).filter([l |
+				EcoreUtil2.getContainerOfType(l, Lexicon).language == gloss.language 
 			])
 			return Scopes.scopeFor(lexemes)
+		} else if(context instanceof TagRef &&
+			reference == HanashiPackage.Literals.TAG_REF__TAG) {
+			val tags = EcoreUtil2.getAllContentsOfType(EcoreUtil2.getRootContainer(context), Tag)
+			return Scopes.scopeFor(tags)
 		} else
 			return super.getScope(context, reference);
 	}
