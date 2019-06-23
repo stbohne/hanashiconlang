@@ -31,7 +31,7 @@ Section:
 
 MetaData:
 	{MetaData}
-	(OptWS tags+=TagRef)*
+	(OptWS taxons+=TaxonRef)*
 	(OptWS "\\id" OptWS id=ID)?
 	(OptWS "\\author" OptWS author=STRING)?
 	(OptWS "\\created" OptWS created=Date)?
@@ -60,7 +60,7 @@ Whitespace:
 ;
 CrossRef:
 	{SectionCrossRef} "\\xs" classes=Classes OptWS target=[Section]
-|	{LexemeCrossRef} "\\xl" classes=Classes OptWS language=[Language] OptWS target=[Lexeme]
+|	{MorphemeCrossRef} "\\xl" classes=Classes OptWS language=[Language] OptWS target=[Morpheme]
 |	{SyntaxCrossRef} "\\xr" classes=Classes OptWS target=[Rule]
 |   {FootnoteCrossRef} "\\xf" classes=Classes OptWS target=[Footnote]
 ;
@@ -84,26 +84,26 @@ GlossWord:
 	items+=GlossItem+
 ;
 GlossItem:
-	{GlossLexeme} lexeme=[Lexeme] (tags+=TagRef)*
+	{GlossMorpheme} morpheme=[Morpheme] (taxons+=TaxonRef)*
 |	{GlossOther} (others+=(STRING | FLOAT | ANY_OTHER | AnySymbol))+
 |	{GlossSep} "_"
 ;
 
 Lexicon:
 	"\\lexicon" classes=Classes OptWS language=[Language] OptWS meta=MetaData OptWS 
-	("\\lexemerefclasses" (OptWS lexemerefclasses+=(ID | STRING))+ OptWS)? ":"
-	OptWS (lexemes+=Lexeme OptWS)*
+	("\\morphemerefclasses" (OptWS morphemerefclasses+=(ID | STRING))+ OptWS)? ":"
+	OptWS (morphemes+=Morpheme OptWS)*
 	"\\end"
 ;
-Lexeme:
-	"\\lexeme" classes=Classes OptWS meta=MetaData ":" OptWS
-	(OptWS entries+=LexemeEntry)*
+Morpheme:
+	"\\morpheme" classes=Classes OptWS meta=MetaData ":" OptWS
+	(OptWS entries+=MorphemeEntry)*
 ;
-LexemeEntry:
+MorphemeEntry:
 	(type="\\form" classes=Classes | 
 	 type=("\\gloss" | "\\translation" | "\\derived") classes=Classes OptWS language=[Language]
 	) OptWS  
-	(tags+=TagRef OptWS)* ":" (texts+=FreeText)*
+	(taxons+=TaxonRef OptWS)* ":" (texts+=FreeText)*
 ;
 
 Syntax: {Syntax}
@@ -134,13 +134,10 @@ Taxonomy:
 	{Taxonomy} "\\taxonomy" classes=Classes OptWS meta=MetaData OptWS ":" (OptWS taxons+=Taxon)* OptWS "\\end"
 ;
 Taxon:
-	"\\taxon" classes=Classes OptWS meta=MetaData OptWS ":" (texts+=FreeText)* (OptWS tags+=Tag)* (OptWS taxons+=Taxon)* OptWS "\\end"
+	"\\taxon" classes=Classes OptWS meta=MetaData OptWS ":" (texts+=FreeText)* (OptWS taxons+=Taxon)* OptWS "\\end"
 ;
-Tag: 
-	"\\tag" classes=Classes OptWS meta=MetaData OptWS ":" (texts+=FreeText)* "\\end"
-;
-TagRef:
-	"#" tag=[Tag]
+TaxonRef:
+	"#" target=[Taxon]
 ;
 Classes:
 	{Classes} ("." classes+=ID)*

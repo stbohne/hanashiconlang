@@ -13,13 +13,13 @@ import org.hanashiconlang.hanashi.Choice
 import org.hanashiconlang.hanashi.Document
 import org.hanashiconlang.hanashi.FreeText
 import org.hanashiconlang.hanashi.Gloss
-import org.hanashiconlang.hanashi.GlossLexeme
+import org.hanashiconlang.hanashi.GlossMorpheme
 import org.hanashiconlang.hanashi.GlossOther
 import org.hanashiconlang.hanashi.GlossSep
 import org.hanashiconlang.hanashi.GlossWord
 import org.hanashiconlang.hanashi.Language
-import org.hanashiconlang.hanashi.Lexeme
-import org.hanashiconlang.hanashi.LexemeCrossRef
+import org.hanashiconlang.hanashi.Morpheme
+import org.hanashiconlang.hanashi.MorphemeCrossRef
 import org.hanashiconlang.hanashi.NonTerminal
 import org.hanashiconlang.hanashi.Optional
 import org.hanashiconlang.hanashi.Repeated
@@ -37,7 +37,6 @@ import org.hanashiconlang.hanashi.Lexicon
 import org.hanashiconlang.hanashi.Table
 import org.hanashiconlang.hanashi.Taxonomy
 import org.hanashiconlang.hanashi.Taxon
-import org.hanashiconlang.hanashi.Tag
 import org.eclipse.xtext.EcoreUtil2
 import org.hanashiconlang.hanashi.TableRow
 import org.hanashiconlang.hanashi.TableCol
@@ -71,24 +70,24 @@ class HanashiGenerator extends AbstractGenerator {
 		prod.seq.map[p| getTerminals(p) ].stream().flatMap[s| s.boxed() ].mapToInt[v| v]
 	}
 	
-	def lexicon(Lexeme l) {
+	def lexicon(Morpheme l) {
 		EcoreUtil2.getContainerOfType(l, Lexicon)
 	}
-	def language(Lexeme l) {
+	def language(Morpheme l) {
 		l.lexicon.language
 	}
 	
-	def CharSequence formString(Lexeme l, Language lang) {
+	def CharSequence formString(Morpheme l, Language lang) {
 		freeTexts2String(l.entries.findFirst[e| 
 			e.type=="\\form"
 		].texts, lang)
 	}
-	def CharSequence glossString(Lexeme l, Language lang) {
+	def CharSequence glossString(Morpheme l, Language lang) {
 		freeTexts2String(l.entries.findFirst[e| 
 			e.type=="\\gloss" && e.language == lang
 		].texts, lang)
 	}
-	def CharSequence translationString(Lexeme l, Language lang) {
+	def CharSequence translationString(Morpheme l, Language lang) {
 		freeTexts2String(l.entries.findFirst[e| 
 			e.type=="\\translation" && e.language == lang
 		].texts, lang)
@@ -141,9 +140,9 @@ class HanashiGenerator extends AbstractGenerator {
 		val classes = #["xref", "section-xref"] + cr.classes.classes.map["usr-" + it]
 		'''<a href="#section$«cr.target.meta.id»" class="«classes.join(" ")»">«cr.target.title»</a>'''
 	}
-	dispatch def generateFreeText(LexemeCrossRef cr, Language lang) {
-		val classes = #["xref", "lexeme-xref"] + cr.classes.classes.map["usr-" + it]
-		'''<a href="#lexeme$«cr.target.language.name»$«cr.target.meta.id»">«cr.target.formString(lang)»</a>'''
+	dispatch def generateFreeText(MorphemeCrossRef cr, Language lang) {
+		val classes = #["xref", "morpheme-xref"] + cr.classes.classes.map["usr-" + it]
+		'''<a href="#morpheme$«cr.target.language.name»$«cr.target.meta.id»">«cr.target.formString(lang)»</a>'''
 	}
 	dispatch def generateFreeText(Gloss g, Language lang) {
 		val classes = #["gloss"] + g.classes.classes.map["usr-" + it]
@@ -182,7 +181,7 @@ class HanashiGenerator extends AbstractGenerator {
 	}
 	dispatch def freeText2String(SectionCrossRef cr, Language lang) 
 		'''«cr.target.title»'''
-	dispatch def freeText2String(LexemeCrossRef cr, Language lang) 
+	dispatch def freeText2String(MorphemeCrossRef cr, Language lang) 
 		'''«cr.target.formString(lang)»'''
 	dispatch def freeText2String(Gloss g, Language lang) 
 		'''«glossWords2String(g.words, lang)»'''
@@ -195,10 +194,10 @@ class HanashiGenerator extends AbstractGenerator {
 		
 	def generateGlossWordsText(EList<GlossWord> gws, Language lang) 
 		'''«FOR gw: gws»<span style="display:table-cell; padding:0.1em">«FOR gi: gw.items»«generateGlossText(gi, lang)»«ENDFOR»</span>«ENDFOR»'''
-	dispatch def generateGlossText(GlossLexeme gl, Language lang) { 
-		val classes = #["lexeme-ref"] + gl.lexeme.meta.refclasses.map["usr-" + it] + 
-			gl.lexeme.lexicon.lexemerefclasses.map["usr-" + it]
-		'''<a style="text-decoration: none" href="#lexeme$«gl.lexeme.language.name»$«gl.lexeme.meta.id»" title="«gl.lexeme.translationString(lang)»" classes="«classes.join(" ")»"">«gl.lexeme.formString(lang)»</a>'''
+	dispatch def generateGlossText(GlossMorpheme gl, Language lang) { 
+		val classes = #["morpheme-ref"] + gl.morpheme.meta.refclasses.map["usr-" + it] + 
+			gl.morpheme.lexicon.morphemerefclasses.map["usr-" + it]
+		'''<a style="text-decoration: none" href="#morpheme$«gl.morpheme.language.name»$«gl.morpheme.meta.id»" title="«gl.morpheme.translationString(lang)»" classes="«classes.join(" ")»"">«gl.morpheme.formString(lang)»</a>'''
 	}
 	dispatch def generateGlossText(GlossOther go, Language lang)
  		'''«FOR o: go.others»«o»«ENDFOR»''' 
@@ -207,8 +206,8 @@ class HanashiGenerator extends AbstractGenerator {
 	}
 	def generateGlossWordsInfo(EList<GlossWord> gws, Language lang) 
 		'''«FOR gw: gws»<span style="display:table-cell">«FOR gi: gw.items»«generateGlossInfo(gi, lang)»«ENDFOR»</span>«ENDFOR»'''
-	dispatch def generateGlossInfo(GlossLexeme gl, Language lang) 
-		'''«gl.lexeme.glossString(lang)»'''
+	dispatch def generateGlossInfo(GlossMorpheme gl, Language lang) 
+		'''«gl.morpheme.glossString(lang)»'''
 	dispatch def generateGlossInfo(GlossOther go, Language lang) 
 		'''«FOR o: go.others»«o»«ENDFOR»''' 
 	dispatch def generateGlossInfo(GlossSep ws, Language lang) {
@@ -217,8 +216,8 @@ class HanashiGenerator extends AbstractGenerator {
 	
 	def glossWords2String(EList<GlossWord> gws, Language lang) 
 		'''«FOR gw: gws»«FOR gi: gw.items»«glossItem2String(gi, lang)»«ENDFOR»«ENDFOR»'''
-	dispatch def glossItem2String(GlossLexeme gl, Language lang) 
-		'''«gl.lexeme.formString(lang)»'''
+	dispatch def glossItem2String(GlossMorpheme gl, Language lang) 
+		'''«gl.morpheme.formString(lang)»'''
 	dispatch def glossItem2String(GlossOther go, Language lang) 
 		'''«FOR o: go.others»«o»«ENDFOR»''' 
 	dispatch def glossItem2String(GlossSep sep, Language lang) {
@@ -227,16 +226,17 @@ class HanashiGenerator extends AbstractGenerator {
 	
 	dispatch def generateDeclaration(Section s, int depth, Language lang) {
 		val classes = #["section"] + s.classes.classes.map["usr-" + it]
-		'''<h«depth» id="section$«s.meta.id»" class="«classes.join(" ")»>«s.title»</h1>
+		'''<h«depth» id="section$«s.meta.id»" class="«classes.join(" ")»">«s.title»</h1>
 		«generateFreeTexts(s.texts, lang)»
 		«FOR p: s.parts»
 		«generateDeclaration(p, depth + 1, lang)»
 		«ENDFOR»'''
 	}
-	dispatch def generateDeclaration(Lexeme l, int depth, Language lang) {
-		val classes = #["lexeme"] + l.classes.classes.map["usr-" + it]
-		'''<div class="«classes.join(" ")»>
-		<b id="lexeme$«l.language.name»$«l.meta.id»">«FOR e: l.entries.filter[e| e.type == "\\form"] SEPARATOR " / "»«freeTexts2String(e.texts, lang)»«ENDFOR»</b>
+	dispatch def generateDeclaration(Morpheme l, int depth, Language lang) {
+		val classes = #["morpheme"] + l.classes.classes.map["usr-" + it]
+		'''<div class="«classes.join(" ")»">
+		<b id="morpheme$«l.language.name»$«l.meta.id»">«FOR e: l.entries.filter[e| e.type == "\\form"] SEPARATOR " / "»«freeTexts2String(e.texts, lang)»«ENDFOR»</b>
+		«FOR t: l.meta.taxons SEPARATOR " "»<a href="#taxon$«t.target.meta.id»">«t.target.meta.id»</a>«ENDFOR»
 		«FOR e: l.entries.filter[e| e.type=="\\translation"] BEFORE "<p>Translations:<dl>\n" AFTER "</dl></p>"»
 		<dd>«e.language.title»</dd>
 		<dt>«generateFreeTexts(e.texts, lang)»<dt/>
@@ -249,32 +249,24 @@ class HanashiGenerator extends AbstractGenerator {
 	}
 	dispatch def generateDeclaration(Lexicon l, int depth, Language lang) {
 		val classes = #["lexicon"] + l.classes.classes.map["usr-" + it]
-		'''<div class="«classes.join(" ")»>
+		'''<div class="«classes.join(" ")»">
 		<h«depth»>Lexicon for «l.language.title»</h«depth»>
-		«FOR lx: l.lexemes»«generateDeclaration(lx, depth + 1, lang)»«ENDFOR»
+		«FOR lx: l.morphemes»«generateDeclaration(lx, depth + 1, lang)»«ENDFOR»
 		</div>'''
 	}
 	dispatch def generateDeclaration(Taxonomy t, int depth, Language lang) {
 		val classes = #["taxonomy"] + t.classes.classes.map["usr-" + it]
-		'''<div class="«classes.join(" ")»>
+		'''<div class="«classes.join(" ")»">
 		<h«depth»>Taxonomy</h«depth»>
 		«FOR tx: t.taxons»«generateDeclaration(tx, depth + 1, lang)»«ENDFOR»
 		</div>'''
 	}
 	dispatch def generateDeclaration(Taxon t, int depth, Language lang) {
 		val classes = #["taxon"] + t.classes.classes.map["usr-" + it]
-		'''<div class="«classes.join(" ")»>
+		'''<div class="«classes.join(" ")»">
 		<h«depth» id="taxon$«t.meta.id»">Taxon «t.meta.id»</h«depth»>
 		«generateFreeTexts(t.texts, lang)»
-		«FOR tx: t.tags»«generateDeclaration(tx, depth + 1, lang)»«ENDFOR»
 		«FOR tx: t.taxons»«generateDeclaration(tx, depth + 1, lang)»«ENDFOR»
-		</div>'''
-	}
-	dispatch def generateDeclaration(Tag t, int depth, Language lang) {
-		val classes = #["tag"] + t.classes.classes.map["usr-" + it]
-		'''<div class="«classes.join(" ")»>
-		<h«depth» id="taxon$«t.meta.id»">Tag «t.meta.id»</h«depth»>
-		«generateFreeTexts(t.texts, lang)»
 		</div>'''
 	}
 }

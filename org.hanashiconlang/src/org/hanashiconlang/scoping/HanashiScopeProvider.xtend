@@ -6,15 +6,15 @@ package org.hanashiconlang.scoping
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.EReference
 import org.eclipse.xtext.scoping.IScope
-import org.hanashiconlang.hanashi.GlossLexeme
+import org.hanashiconlang.hanashi.GlossMorpheme
 import org.hanashiconlang.hanashi.HanashiPackage
 import org.eclipse.xtext.EcoreUtil2
-import org.hanashiconlang.hanashi.Lexeme
+import org.hanashiconlang.hanashi.Morpheme
 import org.hanashiconlang.hanashi.Gloss
 import org.eclipse.xtext.scoping.Scopes
 import org.hanashiconlang.hanashi.Lexicon
-import org.hanashiconlang.hanashi.TagRef
-import org.hanashiconlang.hanashi.Tag
+import org.hanashiconlang.hanashi.TaxonRef
+import org.hanashiconlang.hanashi.Taxon
 import org.eclipse.xtext.naming.QualifiedName
 
 /**
@@ -25,17 +25,17 @@ import org.eclipse.xtext.naming.QualifiedName
  */
 class HanashiScopeProvider extends AbstractHanashiScopeProvider {
 	override IScope getScope(EObject context, EReference reference) {
-		if (context instanceof GlossLexeme &&
-			reference == HanashiPackage.Literals.GLOSS_LEXEME__LEXEME) {
+		if (context instanceof GlossMorpheme &&
+			reference == HanashiPackage.Literals.GLOSS_MORPHEME__MORPHEME) {
 			val gloss = EcoreUtil2.getContainerOfType(context, Gloss)
-			val lexemes = EcoreUtil2.getAllContentsOfType(EcoreUtil2.getRootContainer(context), Lexeme).filter([
+			val lexemes = EcoreUtil2.getAllContentsOfType(EcoreUtil2.getRootContainer(context), Morpheme).filter([
 				EcoreUtil2.getContainerOfType(it, Lexicon).language == gloss.language 
 			])
-			return Scopes.scopeFor(lexemes, QualifiedName.wrapper[Lexeme it | it.meta.id], IScope.NULLSCOPE)
-		} else if(context instanceof TagRef &&
-			reference == HanashiPackage.Literals.TAG_REF__TAG) {
-			val tags = EcoreUtil2.getAllContentsOfType(EcoreUtil2.getRootContainer(context), Tag)
-			return Scopes.scopeFor(tags, QualifiedName.wrapper[Tag it | it.meta.id ], IScope.NULLSCOPE)
+			return Scopes.scopeFor(lexemes, QualifiedName.wrapper[Morpheme it | it.meta.id], IScope.NULLSCOPE)
+		} else if(context instanceof TaxonRef &&
+			reference == HanashiPackage.Literals.TAXON_REF__TARGET) {
+			val tags = EcoreUtil2.getAllContentsOfType(EcoreUtil2.getRootContainer(context), Taxon)
+			return Scopes.scopeFor(tags, QualifiedName.wrapper[Taxon it | it.meta.id ], IScope.NULLSCOPE)
 		} else
 			return super.getScope(context, reference);
 	}
