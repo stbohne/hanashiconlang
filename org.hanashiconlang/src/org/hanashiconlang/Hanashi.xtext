@@ -1,6 +1,8 @@
 grammar org.hanashiconlang.Hanashi
 
 import "http://www.eclipse.org/emf/2002/Ecore" as ecore
+import "http://www.eclipse.org/xtext/common/JavaVMTypes" as jvmTypes
+
 
 generate hanashi "http://www.hanashiconlang.org/Hanashi"
 
@@ -21,11 +23,26 @@ Declaration:
 ;
 
 Section:
-	"\\section" OptWS title=STRING OptWS name=ID OptWS ":" 
+	"\\section" classes=Classes OptWS title=STRING OptWS meta=MetaData OptWS ":"
 	(texts+=FreeText)*
 	(parts+=Declaration OptWS)*
 	"\\end"
 ;
+
+MetaData:
+	{MetaData}
+	(OptWS tags+=TagRef)*
+	(OptWS "\\id" OptWS id=ID)?
+	(OptWS "\\author" OptWS author=STRING)?
+	(OptWS "\\created" OptWS created=Date)?
+	(OptWS "\\modified" OptWS modifed=Date)?
+	(OptWS "\\version" OptWS version=FLOAT)?
+	(OptWS "\\refclasses" OptWS (refclasses+=(ID | STRING))+)?
+;
+Date:	year=FLOAT "/" month=FLOAT "/" day=FLOAT "-" 
+		hour=FLOAT ":" minute=FLOAT ":" second=FLOAT
+;
+
 FreeText:
 	TextItem
 |	Whitespace
@@ -36,66 +53,64 @@ FreeText:
 |   Table
 ;
 TextItem:
-	text=(ID | STRING | FLOAT | ANY_OTHER | 
-	      "*" | "+" | "-" | "&" | "|" | "(" | ")" | "[" | "]" | "{" | "}" | "_")
+	text=(ID | STRING | FLOAT | ANY_OTHER | AnySymbol | "_")
 ;
 Whitespace:
 	{Whitespace} texts+=(WS | "\\br" | "\\p")+
 ;
 CrossRef:
-	{SectionCrossRef} "\\xs" OptWS target=[Section]
-|	{LexemeCrossRef} "\\xl" OptWS language=[Language] OptWS target=[Lexeme]
-|	{SyntaxCrossRef} "\\xr" OptWS target=[Rule]
-|   {FootnoteCrossRef} "\\xf" OptWS target=[Footnote]
+	{SectionCrossRef} "\\xs" classes=Classes OptWS target=[Section]
+|	{LexemeCrossRef} "\\xl" classes=Classes OptWS language=[Language] OptWS target=[Lexeme]
+|	{SyntaxCrossRef} "\\xr" classes=Classes OptWS target=[Rule]
+|   {FootnoteCrossRef} "\\xf" classes=Classes OptWS target=[Footnote]
 ;
 Footnote:
-	"\\footnote" OptWS name=ID ":" (texts+=FreeText)* "\\end"
+	"\\footnote" classes=Classes OptWS meta=MetaData OptWS ":" (texts+=FreeText)* "\\end"
 ;
 Table:
-	"\\table" OptWS name=ID ":" OptWS ("\\tr" OptWS rows+=TableRow OptWS)+ "\\end"
+	"\\table" classes=Classes OptWS meta=MetaData OptWS ":" OptWS (rows+=TableRow OptWS)+ "\\end"
 ;
 TableRow:
-	cols+=TableCol (OptWS cols+=TableCol)*
+	 "\\tr" classes=Classes OptWS cols+=TableCol (OptWS cols+=TableCol)*
 ;
 TableCol:
-	{TableCol} ("\\td" | header?="\\th") (texts+=FreeText)*
+	{TableCol} ("\\td" | header?="\\th") classes=Classes (texts+=FreeText)*
 ;
 
 Gloss:
-	"\\gl" OptWS language=[Language] OptWS ":" OptWS (words+=GlossWord (WS+ words+=GlossWord)* OptWS)? "\\"
+	"\\gl" classes=Classes OptWS language=[Language] OptWS ":" OptWS (words+=GlossWord (WS+ words+=GlossWord)* OptWS)? "\\"
 ;
 GlossWord:
 	items+=GlossItem+
 ;
 GlossItem:
 	{GlossLexeme} lexeme=[Lexeme] (tags+=TagRef)*
-|	{GlossOther} (others+=(STRING | FLOAT | ANY_OTHER | 
-		"*" | "+" | "-" | "&" | "|" | "(" | ")" | "[" | "]" | "{" | "}"))+
+|	{GlossOther} (others+=(STRING | FLOAT | ANY_OTHER | AnySymbol))+
 |	{GlossSep} "_"
 ;
 
 Lexicon:
-	"\\lexicon" OptWS language=[Language]
+	"\\lexicon" classes=Classes OptWS language=[Language] OptWS meta=MetaData OptWS 
+	("\\lexemerefclasses" (OptWS lexemerefclasses+=(ID | STRING))+ OptWS)? ":"
 	OptWS (lexemes+=Lexeme OptWS)*
 	"\\end"
 ;
 Lexeme:
-	"\\lexeme" OptWS name=ID 
-	OptWS (tags+=TagRef OptWS)* ":" OptWS
+	"\\lexeme" classes=Classes OptWS meta=MetaData ":" OptWS
 	(OptWS entries+=LexemeEntry)*
 ;
 LexemeEntry:
-	(type="\\form" | 
-	 type=("\\gloss" | "\\translation" | "\\derived") OptWS language=[Language]
+	(type="\\form" classes=Classes | 
+	 type=("\\gloss" | "\\translation" | "\\derived") classes=Classes OptWS language=[Language]
 	) OptWS  
-	(tags+=TagRef OptWS)* ":" (texts+=FreeText)* 
+	(tags+=TagRef OptWS)* ":" (texts+=FreeText)*
 ;
 
 Syntax: {Syntax}
-	"\\syntax" OptWS (rules+=Rule OptWS)* "\\end"
+	"\\syntax" classes=Classes OptWS meta=MetaData OptWS ":" OptWS (rules+=Rule OptWS)* "\\end"
 ;
 Rule:
-	name=ID OptWS "=" OptWS production=Production
+	name=ID classes=Classes OptWS "=" OptWS production=Production
 ;
 Production:
 	ChoiceProduction
@@ -116,17 +131,21 @@ SimpleProduction:
 ;
 
 Taxonomy:
-	{Taxonomy} "\\taxonomy" (OptWS taxons+=Taxon)* OptWS "\\end"
+	{Taxonomy} "\\taxonomy" classes=Classes OptWS meta=MetaData OptWS ":" (OptWS taxons+=Taxon)* OptWS "\\end"
 ;
 Taxon:
-	"\\taxon" OptWS name=ID (texts+=FreeText)* (OptWS tags+=Tag)* (OptWS taxons+=Taxon)* OptWS "\\end"
+	"\\taxon" classes=Classes OptWS meta=MetaData OptWS ":" (texts+=FreeText)* (OptWS tags+=Tag)* (OptWS taxons+=Taxon)* OptWS "\\end"
 ;
 Tag: 
-	"\\tag" OptWS name=ID (texts+=FreeText)* "\\end"
+	"\\tag" classes=Classes OptWS meta=MetaData OptWS ":" (texts+=FreeText)* "\\end"
 ;
 TagRef:
 	"#" tag=[Tag]
 ;
+Classes:
+	{Classes} ("." classes+=ID)*
+;
+AnySymbol: "*" | "/" | "?" | "+" | "-" | "." | ":" | "&" | "|" | "(" | ")" | "[" | "]" | "{" | "}";
 
 terminal INSTRUCTION: '\\' ID;
 terminal ID: ('A'..'Z' | 'a'..'z') ('A'..'Z' | 'a'..'z' | '0'..'9')*;
