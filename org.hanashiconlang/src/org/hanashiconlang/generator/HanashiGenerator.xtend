@@ -11,35 +11,26 @@ import org.eclipse.xtext.generator.IFileSystemAccess2
 import org.eclipse.xtext.generator.IGeneratorContext
 import org.hanashiconlang.hanashi.Choice
 import org.hanashiconlang.hanashi.Document
-import org.hanashiconlang.hanashi.FreeText
 import org.hanashiconlang.hanashi.Gloss
 import org.hanashiconlang.hanashi.GlossMorpheme
-import org.hanashiconlang.hanashi.GlossOther
 import org.hanashiconlang.hanashi.GlossSep
 import org.hanashiconlang.hanashi.GlossWord
 import org.hanashiconlang.hanashi.Language
 import org.hanashiconlang.hanashi.Morpheme
-import org.hanashiconlang.hanashi.MorphemeCrossRef
 import org.hanashiconlang.hanashi.NonTerminal
 import org.hanashiconlang.hanashi.Optional
 import org.hanashiconlang.hanashi.Repeated
 import org.hanashiconlang.hanashi.Section
-import org.hanashiconlang.hanashi.SectionCrossRef
 import org.hanashiconlang.hanashi.Sequence
 import org.hanashiconlang.hanashi.Syntax
 import org.hanashiconlang.hanashi.Terminal
-import org.hanashiconlang.hanashi.TextItem
 import org.hanashiconlang.hanashi.Weighted
-import org.hanashiconlang.hanashi.Whitespace
 
 import static extension java.util.stream.IntStream.*
 import org.hanashiconlang.hanashi.Lexicon
-import org.hanashiconlang.hanashi.Table
 import org.hanashiconlang.hanashi.Taxonomy
 import org.hanashiconlang.hanashi.Taxon
 import org.eclipse.xtext.EcoreUtil2
-import org.hanashiconlang.hanashi.TableRow
-import org.hanashiconlang.hanashi.TableCol
 
 /**
  * Generates code from your model files on save.
@@ -47,226 +38,226 @@ import org.hanashiconlang.hanashi.TableCol
  * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#code-generation
  */
 class HanashiGenerator extends AbstractGenerator {
-	
-	dispatch def IntStream getTerminals(Terminal prod) {
-		prod.text.codePoints
-	}
-	dispatch def IntStream getTerminals(NonTerminal prod) {
-		getTerminals(prod.target.production)
-	}
-	dispatch def IntStream getTerminals(Weighted prod) {
-		IntStream.empty
-	}
-	dispatch def IntStream getTerminals(Optional prod) {
-		getTerminals(prod.inner)
-	}
-	dispatch def IntStream getTerminals(Repeated prod) {
-		getTerminals(prod.inner)
-	}
-	dispatch def IntStream getTerminals(Choice prod) {
-		getTerminals(prod.left).concat(getTerminals(prod.right))
-	}
-	dispatch def IntStream getTerminals(Sequence prod) {
-		prod.seq.map[p| getTerminals(p) ].stream().flatMap[s| s.boxed() ].mapToInt[v| v]
-	}
-	
-	def lexicon(Morpheme l) {
-		EcoreUtil2.getContainerOfType(l, Lexicon)
-	}
-	def language(Morpheme l) {
-		l.lexicon.language
-	}
-	
-	def CharSequence formString(Morpheme l, Language lang) {
-		freeTexts2String(l.entries.findFirst[e| 
-			e.type=="\\form"
-		].texts, lang)
-	}
-	def CharSequence glossString(Morpheme l, Language lang) {
-		freeTexts2String(l.entries.findFirst[e| 
-			e.type=="\\gloss" && e.language == lang
-		].texts, lang)
-	}
-	def CharSequence translationString(Morpheme l, Language lang) {
-		freeTexts2String(l.entries.findFirst[e| 
-			e.type=="\\translation" && e.language == lang
-		].texts, lang)
-	}
-	def <T> strip(Iterable<T> list, Class<? extends T> clazz) {
-		var list_ = list
-		while (!list_.nullOrEmpty && clazz.isInstance(list_.head))
-			list_ = list_.drop(1)
-		while (!list_.nullOrEmpty && clazz.isInstance(list_.last))
-			list_ = list_.take(list_.size - 1)
-		list_
-	}
-
+//	
+//	dispatch def IntStream getTerminals(Terminal prod) {
+//		prod.text.codePoints
+//	}
+//	dispatch def IntStream getTerminals(NonTerminal prod) {
+//		getTerminals(prod.target.production)
+//	}
+//	dispatch def IntStream getTerminals(Weighted prod) {
+//		IntStream.empty
+//	}
+//	dispatch def IntStream getTerminals(Optional prod) {
+//		getTerminals(prod.inner)
+//	}
+//	dispatch def IntStream getTerminals(Repeated prod) {
+//		getTerminals(prod.inner)
+//	}
+//	dispatch def IntStream getTerminals(Choice prod) {
+//		getTerminals(prod.left).concat(getTerminals(prod.right))
+//	}
+//	dispatch def IntStream getTerminals(Sequence prod) {
+//		prod.seq.map[p| getTerminals(p) ].stream().flatMap[s| s.boxed() ].mapToInt[v| v]
+//	}
+//	
+//	def lexicon(Morpheme l) {
+//		EcoreUtil2.getContainerOfType(l, Lexicon)
+//	}
+//	def language(Morpheme l) {
+//		l.lexicon.language
+//	}
+//	
+//	def CharSequence formString(Morpheme l, Language lang) {
+//		freeTexts2String(l.entries.findFirst[e| 
+//			e.type=="\\form"
+//		].texts, lang)
+//	}
+//	def CharSequence glossString(Morpheme l, Language lang) {
+//		freeTexts2String(l.entries.findFirst[e| 
+//			e.type=="\\gloss" && e.language == lang
+//		].texts, lang)
+//	}
+//	def CharSequence translationString(Morpheme l, Language lang) {
+//		freeTexts2String(l.entries.findFirst[e| 
+//			e.type=="\\translation" && e.language == lang
+//		].texts, lang)
+//	}
+//	def <T> strip(Iterable<T> list, Class<? extends T> clazz) {
+//		var list_ = list
+//		while (!list_.nullOrEmpty && clazz.isInstance(list_.head))
+//			list_ = list_.drop(1)
+//		while (!list_.nullOrEmpty && clazz.isInstance(list_.last))
+//			list_ = list_.take(list_.size - 1)
+//		list_
+//	}
+//
 	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
-		val lang = resource.contents.filter(Document).head.languages.head
-		fsa.generateFile('output.html', '''
-			<html>
-			<body>
-			«FOR d: resource.contents.filter(Document)»
-				«FOR p: d.parts»
-				«generateDeclaration(p, 1, lang)»
-				«ENDFOR»
-			«ENDFOR»
-			</body>
-			</html>
-		''')
-		
+//		val lang = resource.contents.filter(Document).head.languages.head
+//		fsa.generateFile('output.html', '''
+//			<html>
+//			<body>
+//			«FOR d: resource.contents.filter(Document)»
+//				«FOR p: d.parts»
+//				«generateDeclaration(p, 1, lang)»
+//				«ENDFOR»
+//			«ENDFOR»
+//			</body>
+//			</html>
+//		''')
+//		
 	}
-	
-	def generateFreeTexts(EList<FreeText> ts, Language lang)
-		'''<p>
-		«FOR t: ts.strip(Whitespace)»«generateFreeText(t, lang)»«ENDFOR»
-		</p>'''
-	dispatch def generateFreeText(TextItem t, Language lang) {
-		t.text
-    }
-	dispatch def generateFreeText(Whitespace ws, Language lang) {
-		if (ws.texts.filter[t| t=="\\br" || t=="\\p"].empty) {
-			if (ws.texts.filter[t| t=="\n"].size >= 2) '''
-				</p>
-				<p>
-			'''
-			else
-				" "
-		} else {
-			'''«FOR t: ws.texts»«IF t=="\\br"»<br/>«ELSEIF t=="\\p"»</p><p>«ELSE»«ENDIF»«ENDFOR»'''
-		}
-	}
-	dispatch def generateFreeText(SectionCrossRef cr, Language lang) {
-		val classes = #["xref", "section-xref"] + cr.classes.classes.map["usr-" + it]
-		'''<a href="#section$«cr.target.meta.id»" class="«classes.join(" ")»">«cr.target.title»</a>'''
-	}
-	dispatch def generateFreeText(MorphemeCrossRef cr, Language lang) {
-		val classes = #["xref", "morpheme-xref"] + cr.classes.classes.map["usr-" + it]
-		'''<a href="#morpheme$«cr.target.language.name»$«cr.target.meta.id»">«cr.target.formString(lang)»</a>'''
-	}
-	dispatch def generateFreeText(Gloss g, Language lang) {
-		val classes = #["gloss"] + g.classes.classes.map["usr-" + it]
-		'''
-		<span style="display:inline-table" class="«classes.join(" ")»">
-		    <span style="display:table-row; text-align:left">«generateGlossWordsText(g.words, lang)»</span>
-		    <span style="display:table-row; font-size:66%; line-height:20%; text-align:center">«generateGlossWordsInfo(g.words, lang)»</span>
-		</span>'''
-	}
-	dispatch def generateFreeText(Syntax s, Language lang) {
-		""
-	}
-	dispatch def generateFreeText(Table t, Language lang) {
-		val classes = #["table"] + t.classes.classes.map["usr-" + it]
-		'''<table id="table$«t.meta.id»" class="«classes.join(" ")»">
-			   «FOR r: t.rows»«generateTableRow(r, lang)»«ENDFOR»
-		   </table>'''
-	}
-	def generateTableRow(TableRow r, Language lang) {
-		val classes = #["table-row"] + r.classes.classes.map["usr-" + it]
-		'''<tr class="«classes.join(" ")»">«FOR c: r.cols»
-				«generateTableCol(c, lang)»
-		   «ENDFOR»</tr>'''
-	}
-	def generateTableCol(TableCol c, Language lang) {
-		val classes = #["table-col"] + c.classes.classes.map["usr-" + it]
-		'''<«IF c.header»th«ELSE»td«ENDIF» class="«classes.join(" ")»">«generateFreeTexts(c.texts, lang)»«IF c.header»</th>«ELSE»</td>«ENDIF»'''
-	}
-	
-	def freeTexts2String(EList<FreeText> ts, Language lang) 
-		'''«FOR t: ts.strip(Whitespace)»«freeText2String(t, lang)»«ENDFOR»'''
-	dispatch def freeText2String(TextItem t, Language lang) 
-		'''«t.text»'''
-	dispatch def freeText2String(Whitespace ws, Language lang) { 
-		" "
-	}
-	dispatch def freeText2String(SectionCrossRef cr, Language lang) 
-		'''«cr.target.title»'''
-	dispatch def freeText2String(MorphemeCrossRef cr, Language lang) 
-		'''«cr.target.formString(lang)»'''
-	dispatch def freeText2String(Gloss g, Language lang) 
-		'''«glossWords2String(g.words, lang)»'''
-	dispatch def freeText2String(Syntax s, Language lang) {
-		""
-	}
-	dispatch def freeText2String(Table t, Language lang) {
-		""
-	}
-		
-	def generateGlossWordsText(EList<GlossWord> gws, Language lang) 
-		'''«FOR gw: gws»<span style="display:table-cell; padding:0.1em">«FOR gi: gw.items»«generateGlossText(gi, lang)»«ENDFOR»</span>«ENDFOR»'''
-	dispatch def generateGlossText(GlossMorpheme gl, Language lang) { 
-		val classes = #["morpheme-ref"] + gl.morpheme.meta.refclasses.map["usr-" + it] + 
-			gl.morpheme.lexicon.morphemerefclasses.map["usr-" + it]
-		'''<a style="text-decoration: none" href="#morpheme$«gl.morpheme.language.name»$«gl.morpheme.meta.id»" title="«gl.morpheme.translationString(lang)»" classes="«classes.join(" ")»"">«gl.morpheme.formString(lang)»</a>'''
-	}
-	dispatch def generateGlossText(GlossOther go, Language lang)
- 		'''«FOR o: go.others»«o»«ENDFOR»''' 
-	dispatch def generateGlossText(GlossSep ws, Language lang) {
-		""
-	}
-	def generateGlossWordsInfo(EList<GlossWord> gws, Language lang) 
-		'''«FOR gw: gws»<span style="display:table-cell">«FOR gi: gw.items»«generateGlossInfo(gi, lang)»«ENDFOR»</span>«ENDFOR»'''
-	dispatch def generateGlossInfo(GlossMorpheme gl, Language lang) 
-		'''«gl.morpheme.glossString(lang)»'''
-	dispatch def generateGlossInfo(GlossOther go, Language lang) 
-		'''«FOR o: go.others»«o»«ENDFOR»''' 
-	dispatch def generateGlossInfo(GlossSep ws, Language lang) {
-		"·"
-	}
-	
-	def glossWords2String(EList<GlossWord> gws, Language lang) 
-		'''«FOR gw: gws»«FOR gi: gw.items»«glossItem2String(gi, lang)»«ENDFOR»«ENDFOR»'''
-	dispatch def glossItem2String(GlossMorpheme gl, Language lang) 
-		'''«gl.morpheme.formString(lang)»'''
-	dispatch def glossItem2String(GlossOther go, Language lang) 
-		'''«FOR o: go.others»«o»«ENDFOR»''' 
-	dispatch def glossItem2String(GlossSep sep, Language lang) {
-		""
-	}
-	
-	dispatch def generateDeclaration(Section s, int depth, Language lang) {
-		val classes = #["section"] + s.classes.classes.map["usr-" + it]
-		'''<h«depth» id="section$«s.meta.id»" class="«classes.join(" ")»">«s.title»</h1>
-		«generateFreeTexts(s.texts, lang)»
-		«FOR p: s.parts»
-		«generateDeclaration(p, depth + 1, lang)»
-		«ENDFOR»'''
-	}
-	dispatch def generateDeclaration(Morpheme l, int depth, Language lang) {
-		val classes = #["morpheme"] + l.classes.classes.map["usr-" + it]
-		'''<div class="«classes.join(" ")»">
-		<b id="morpheme$«l.language.name»$«l.meta.id»">«FOR e: l.entries.filter[e| e.type == "\\form"] SEPARATOR " / "»«freeTexts2String(e.texts, lang)»«ENDFOR»</b>
-		«FOR t: l.meta.taxons SEPARATOR " "»<a href="#taxon$«t.target.meta.id»">«t.target.meta.id»</a>«ENDFOR»
-		«FOR e: l.entries.filter[e| e.type=="\\translation"] BEFORE "<p>Translations:<dl>\n" AFTER "</dl></p>"»
-		<dd>«e.language.title»</dd>
-		<dt>«generateFreeTexts(e.texts, lang)»<dt/>
-		«ENDFOR»
-		«FOR e: l.entries.filter[e| e.type=="\\derived"] BEFORE "<p>Derived from:<dl>\n" AFTER "</dl></p>"»
-		<dd>«e.language.title»</dd>
-		<dt>«generateFreeTexts(e.texts, lang)»<dt/>
-		«ENDFOR»
-		</div>'''
-	}
-	dispatch def generateDeclaration(Lexicon l, int depth, Language lang) {
-		val classes = #["lexicon"] + l.classes.classes.map["usr-" + it]
-		'''<div class="«classes.join(" ")»">
-		<h«depth»>Lexicon for «l.language.title»</h«depth»>
-		«FOR lx: l.morphemes»«generateDeclaration(lx, depth + 1, lang)»«ENDFOR»
-		</div>'''
-	}
-	dispatch def generateDeclaration(Taxonomy t, int depth, Language lang) {
-		val classes = #["taxonomy"] + t.classes.classes.map["usr-" + it]
-		'''<div class="«classes.join(" ")»">
-		<h«depth»>Taxonomy</h«depth»>
-		«FOR tx: t.taxons»«generateDeclaration(tx, depth + 1, lang)»«ENDFOR»
-		</div>'''
-	}
-	dispatch def generateDeclaration(Taxon t, int depth, Language lang) {
-		val classes = #["taxon"] + t.classes.classes.map["usr-" + it]
-		'''<div class="«classes.join(" ")»">
-		<h«depth» id="taxon$«t.meta.id»">Taxon «t.meta.id»</h«depth»>
-		«generateFreeTexts(t.texts, lang)»
-		«FOR tx: t.taxons»«generateDeclaration(tx, depth + 1, lang)»«ENDFOR»
-		</div>'''
-	}
+//	
+//	def generateFreeTexts(EList<FreeText> ts, Language lang)
+//		'''<p>
+//		«FOR t: ts.strip(Whitespace)»«generateFreeText(t, lang)»«ENDFOR»
+//		</p>'''
+//	dispatch def generateFreeText(TextItem t, Language lang) {
+//		t.text
+//    }
+//	dispatch def generateFreeText(Whitespace ws, Language lang) {
+//		if (ws.texts.filter[t| t=="\\br" || t=="\\p"].empty) {
+//			if (ws.texts.filter[t| t=="\n"].size >= 2) '''
+//				</p>
+//				<p>
+//			'''
+//			else
+//				" "
+//		} else {
+//			'''«FOR t: ws.texts»«IF t=="\\br"»<br/>«ELSEIF t=="\\p"»</p><p>«ELSE»«ENDIF»«ENDFOR»'''
+//		}
+//	}
+//	dispatch def generateFreeText(SectionCrossRef cr, Language lang) {
+//		val classes = #["xref", "section-xref"] + cr.classes.classes.map["usr-" + it]
+//		'''<a href="#section$«cr.target.meta.id»" class="«classes.join(" ")»">«cr.target.title»</a>'''
+//	}
+//	dispatch def generateFreeText(MorphemeCrossRef cr, Language lang) {
+//		val classes = #["xref", "morpheme-xref"] + cr.classes.classes.map["usr-" + it]
+//		'''<a href="#morpheme$«cr.target.language.name»$«cr.target.meta.id»">«cr.target.formString(lang)»</a>'''
+//	}
+//	dispatch def generateFreeText(Gloss g, Language lang) {
+//		val classes = #["gloss"] + g.classes.classes.map["usr-" + it]
+//		'''
+//		<span style="display:inline-table" class="«classes.join(" ")»">
+//		    <span style="display:table-row; text-align:left">«generateGlossWordsText(g.words, lang)»</span>
+//		    <span style="display:table-row; font-size:66%; line-height:20%; text-align:center">«generateGlossWordsInfo(g.words, lang)»</span>
+//		</span>'''
+//	}
+//	dispatch def generateFreeText(Syntax s, Language lang) {
+//		""
+//	}
+//	dispatch def generateFreeText(Table t, Language lang) {
+//		val classes = #["table"] + t.classes.classes.map["usr-" + it]
+//		'''<table id="table$«t.meta.id»" class="«classes.join(" ")»">
+//			   «FOR r: t.rows»«generateTableRow(r, lang)»«ENDFOR»
+//		   </table>'''
+//	}
+//	def generateTableRow(TableRow r, Language lang) {
+//		val classes = #["table-row"] + r.classes.classes.map["usr-" + it]
+//		'''<tr class="«classes.join(" ")»">«FOR c: r.cols»
+//				«generateTableCol(c, lang)»
+//		   «ENDFOR»</tr>'''
+//	}
+//	def generateTableCol(TableCol c, Language lang) {
+//		val classes = #["table-col"] + c.classes.classes.map["usr-" + it]
+//		'''<«IF c.header»th«ELSE»td«ENDIF» class="«classes.join(" ")»">«generateFreeTexts(c.texts, lang)»«IF c.header»</th>«ELSE»</td>«ENDIF»'''
+//	}
+//	
+//	def freeTexts2String(EList<FreeText> ts, Language lang) 
+//		'''«FOR t: ts.strip(Whitespace)»«freeText2String(t, lang)»«ENDFOR»'''
+//	dispatch def freeText2String(TextItem t, Language lang) 
+//		'''«t.text»'''
+//	dispatch def freeText2String(Whitespace ws, Language lang) { 
+//		" "
+//	}
+//	dispatch def freeText2String(SectionCrossRef cr, Language lang) 
+//		'''«cr.target.title»'''
+//	dispatch def freeText2String(MorphemeCrossRef cr, Language lang) 
+//		'''«cr.target.formString(lang)»'''
+//	dispatch def freeText2String(Gloss g, Language lang) 
+//		'''«glossWords2String(g.words, lang)»'''
+//	dispatch def freeText2String(Syntax s, Language lang) {
+//		""
+//	}
+//	dispatch def freeText2String(Table t, Language lang) {
+//		""
+//	}
+//		
+//	def generateGlossWordsText(EList<GlossWord> gws, Language lang) 
+//		'''«FOR gw: gws»<span style="display:table-cell; padding:0.1em">«FOR gi: gw.items»«generateGlossText(gi, lang)»«ENDFOR»</span>«ENDFOR»'''
+//	dispatch def generateGlossText(GlossMorpheme gl, Language lang) { 
+//		val classes = #["morpheme-ref"] + gl.morpheme.meta.refclasses.map["usr-" + it] + 
+//			gl.morpheme.lexicon.morphemerefclasses.map["usr-" + it]
+//		'''<a style="text-decoration: none" href="#morpheme$«gl.morpheme.language.name»$«gl.morpheme.meta.id»" title="«gl.morpheme.translationString(lang)»" classes="«classes.join(" ")»"">«gl.morpheme.formString(lang)»</a>'''
+//	}
+//	dispatch def generateGlossText(GlossOther go, Language lang)
+// 		'''«FOR o: go.others»«o»«ENDFOR»''' 
+//	dispatch def generateGlossText(GlossSep ws, Language lang) {
+//		""
+//	}
+//	def generateGlossWordsInfo(EList<GlossWord> gws, Language lang) 
+//		'''«FOR gw: gws»<span style="display:table-cell">«FOR gi: gw.items»«generateGlossInfo(gi, lang)»«ENDFOR»</span>«ENDFOR»'''
+//	dispatch def generateGlossInfo(GlossMorpheme gl, Language lang) 
+//		'''«gl.morpheme.glossString(lang)»'''
+//	dispatch def generateGlossInfo(GlossOther go, Language lang) 
+//		'''«FOR o: go.others»«o»«ENDFOR»''' 
+//	dispatch def generateGlossInfo(GlossSep ws, Language lang) {
+//		"·"
+//	}
+//	
+//	def glossWords2String(EList<GlossWord> gws, Language lang) 
+//		'''«FOR gw: gws»«FOR gi: gw.items»«glossItem2String(gi, lang)»«ENDFOR»«ENDFOR»'''
+//	dispatch def glossItem2String(GlossMorpheme gl, Language lang) 
+//		'''«gl.morpheme.formString(lang)»'''
+//	dispatch def glossItem2String(GlossOther go, Language lang) 
+//		'''«FOR o: go.others»«o»«ENDFOR»''' 
+//	dispatch def glossItem2String(GlossSep sep, Language lang) {
+//		""
+//	}
+//	
+//	dispatch def generateDeclaration(Section s, int depth, Language lang) {
+//		val classes = #["section"] + s.classes.classes.map["usr-" + it]
+//		'''<h«depth» id="section$«s.meta.id»" class="«classes.join(" ")»">«s.title»</h1>
+//		«generateFreeTexts(s.texts, lang)»
+//		«FOR p: s.parts»
+//		«generateDeclaration(p, depth + 1, lang)»
+//		«ENDFOR»'''
+//	}
+//	dispatch def generateDeclaration(Morpheme l, int depth, Language lang) {
+//		val classes = #["morpheme"] + l.classes.classes.map["usr-" + it]
+//		'''<div class="«classes.join(" ")»">
+//		<b id="morpheme$«l.language.name»$«l.meta.id»">«FOR e: l.entries.filter[e| e.type == "\\form"] SEPARATOR " / "»«freeTexts2String(e.texts, lang)»«ENDFOR»</b>
+//		«FOR t: l.meta.taxons SEPARATOR " "»<a href="#taxon$«t.target.meta.id»">«t.target.meta.id»</a>«ENDFOR»
+//		«FOR e: l.entries.filter[e| e.type=="\\translation"] BEFORE "<p>Translations:<dl>\n" AFTER "</dl></p>"»
+//		<dd>«e.language.title»</dd>
+//		<dt>«generateFreeTexts(e.texts, lang)»<dt/>
+//		«ENDFOR»
+//		«FOR e: l.entries.filter[e| e.type=="\\derived"] BEFORE "<p>Derived from:<dl>\n" AFTER "</dl></p>"»
+//		<dd>«e.language.title»</dd>
+//		<dt>«generateFreeTexts(e.texts, lang)»<dt/>
+//		«ENDFOR»
+//		</div>'''
+//	}
+//	dispatch def generateDeclaration(Lexicon l, int depth, Language lang) {
+//		val classes = #["lexicon"] + l.classes.classes.map["usr-" + it]
+//		'''<div class="«classes.join(" ")»">
+//		<h«depth»>Lexicon for «l.language.title»</h«depth»>
+//		«FOR lx: l.morphemes»«generateDeclaration(lx, depth + 1, lang)»«ENDFOR»
+//		</div>'''
+//	}
+//	dispatch def generateDeclaration(Taxonomy t, int depth, Language lang) {
+//		val classes = #["taxonomy"] + t.classes.classes.map["usr-" + it]
+//		'''<div class="«classes.join(" ")»">
+//		<h«depth»>Taxonomy</h«depth»>
+//		«FOR tx: t.taxons»«generateDeclaration(tx, depth + 1, lang)»«ENDFOR»
+//		</div>'''
+//	}
+//	dispatch def generateDeclaration(Taxon t, int depth, Language lang) {
+//		val classes = #["taxon"] + t.classes.classes.map["usr-" + it]
+//		'''<div class="«classes.join(" ")»">
+//		<h«depth» id="taxon$«t.meta.id»">Taxon «t.meta.id»</h«depth»>
+//		«generateFreeTexts(t.texts, lang)»
+//		«FOR tx: t.taxons»«generateDeclaration(tx, depth + 1, lang)»«ENDFOR»
+//		</div>'''
+//	}
 }

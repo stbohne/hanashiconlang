@@ -1,152 +1,146 @@
-grammar org.hanashiconlang.Hanashi
+grammar org.hanashiconlang.Hanashi 
+	with org.eclipse.xtext.xbase.annotations.XbaseWithAnnotations
 
-import "http://www.eclipse.org/emf/2002/Ecore" as ecore
-import "http://www.eclipse.org/xtext/common/JavaVMTypes" as jvmTypes
-
+import 'http://www.eclipse.org/xtext/xbase/Xbase' as xbase
 
 generate hanashi "http://www.hanashiconlang.org/Hanashi"
 
 Document: {Document}
-	(OptWS languages+=Language)* 
-	(OptWS parts+=Declaration)* OptWS
+	( parts+=Declaration)*
 ;
-OptWS: WS*;
 
 Language:
-	"\\language" OptWS name=ID OptWS title=STRING
+	"language" name=ID title=STRING
 ;
 	
 Declaration:
 	Section
 |   Lexicon
 |	Taxonomy
+|	Language
+|	Syntax
 ;
 
 Section:
-	"\\section" classes=Classes OptWS title=STRING OptWS meta=MetaData OptWS ":"
-	(texts+=FreeText)*
-	(parts+=Declaration OptWS)*
-	"\\end"
+	"section" (name=ID)? title=STRING (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
+	text=RichString?
+	(parts+=Section)*
+	"end"
 ;
 
 MetaData:
 	{MetaData}
-	(OptWS taxons+=TaxonRef)*
-	(OptWS "\\id" OptWS id=ID)?
-	(OptWS "\\author" OptWS author=STRING)?
-	(OptWS "\\created" OptWS created=Date)?
-	(OptWS "\\modified" OptWS modified=Date)?
-	(OptWS "\\version" OptWS version=FLOAT)?
-	(OptWS "\\refclasses" OptWS (refclasses+=(ID | STRING))+)?
+	("author" author=(ID | STRING))?
+	("created" created=Date)?
+	("modified" modified=Date)?
+	("version" version=STRING)?
 ;
-Date:	year=FLOAT "/" month=FLOAT "/" day=FLOAT "-" 
-		hour=FLOAT ":" minute=FLOAT ":" second=FLOAT
+HtmlData:
+	{HtmlData}
+	("class" class=(ID | STRING))?
+	("refclass" refclass=(ID | STRING))?
+;
+Date:	year=INT "/" month=INT "/" day=INT "-" 
+		hour=INT ":" minute=INT ":" second=INT
 ;
 
-FreeText:
-	TextItem
-|	Whitespace
-| 	Syntax 
-| 	Gloss 
-| 	CrossRef 
-| 	Footnote
-|   Table
+RichString returns xbase::XExpression:
+	{RichString} (
+    expressions+=RichStringSingle
+|   expressions+=RichStringLeft expressions+=RichStringPart
+	(expressions+=RichStringMiddle expressions+=RichStringPart)* expressions+=RichStringRight
+);
+RichStringSingle returns xbase::XStringLiteral:
+	{RichStringLiteral} value=TEXTSINGLE
 ;
-TextItem:
-	text=(ID | STRING | FLOAT | ANY_OTHER | AnySymbol | "_")
+RichStringLeft returns xbase::XStringLiteral:
+	{RichStringLiteral} value=TEXTLEFT
 ;
-Whitespace:
-	{Whitespace} texts+=(WS | "\\br" | "\\p")+
+RichStringMiddle returns xbase::XStringLiteral:
+	{RichStringLiteral} value=TEXTMIDDLE
 ;
-CrossRef:
-	{SectionCrossRef} "\\xs" classes=Classes OptWS target=[Section]
-|	{MorphemeCrossRef} "\\xl" classes=Classes OptWS language=[Language] OptWS target=[Morpheme]
-|	{SyntaxCrossRef} "\\xr" classes=Classes OptWS target=[Rule]
-|   {FootnoteCrossRef} "\\xf" classes=Classes OptWS target=[Footnote]
+RichStringRight returns xbase::XStringLiteral:
+	{RichStringLiteral} value=TEXTRIGHT
 ;
-Footnote:
-	"\\footnote" classes=Classes OptWS meta=MetaData OptWS ":" (texts+=FreeText)* "\\end"
+RichStringPart returns xbase::XExpression:
+	XExpressionInClosure
+|	Gloss
 ;
-Table:
-	"\\table" classes=Classes OptWS meta=MetaData OptWS ":" OptWS (rows+=TableRow OptWS)+ "\\end"
-;
-TableRow:
-	 "\\tr" classes=Classes OptWS cols+=TableCol (OptWS cols+=TableCol)*
-;
-TableCol:
-	{TableCol} ("\\td" | header?="\\th") classes=Classes (texts+=FreeText)*
-;
+
+
 
 Gloss:
-	"\\gl" classes=Classes OptWS language=[Language] OptWS ":" OptWS (words+=GlossWord (WS+ words+=GlossWord)* OptWS)? "\\"
+	{Gloss} "GL" (name=ID)? meta=MetaData html=HtmlData 
+			lines+=GlossLine ("\\\\" lines+=GlossLine)* "\\\\"?
+;
+GlossLine:
+	language=[Language] ":" (words+=GlossWord)*
 ;
 GlossWord:
-	items+=GlossItem+
+	items+=GlossItem ("~" items+=GlossItem)*
 ;
 GlossItem:
 	{GlossMorpheme} morpheme=[Morpheme] (taxons+=TaxonRef)*
-|	{GlossOther} (others+=(STRING | FLOAT | ANY_OTHER | AnySymbol))+
-|	{GlossSep} "_"
+|	{GlossString} string=(STRING | "," | "-" | "." | ":" | ";" | "(" | ")" | "/" | "?" | "!")
+|	{GlossRichString} string=RichString
+|	{GlossSkip} ">"
 ;
 
 Lexicon:
-	"\\lexicon" classes=Classes OptWS language=[Language] OptWS meta=MetaData OptWS 
-	("\\morphemerefclasses" (OptWS morphemerefclasses+=(ID | STRING))+ OptWS)? ":"
-	OptWS (morphemes+=Morpheme OptWS)*
-	"\\end"
+	"lexicon" (name=ID)? language=[Language] (taxons+=TaxonRef)* meta=MetaData html=HtmlData 
+	("morphemerefclasses" ( morphemerefclasses+=(ID | STRING))+)? ":"
+	(morphemes+=Morpheme)*
+	"end"
 ;
 Morpheme:
-	"\\morpheme" classes=Classes OptWS meta=MetaData ":" OptWS
-	(OptWS entries+=MorphemeEntry)*
+	"morpheme" name=ID (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
+	(entries+=MorphemeEntry)*
 ;
 MorphemeEntry:
-	(type="\\form" classes=Classes | 
-	 type=("\\gloss" | "\\translation" | "\\derived") classes=Classes OptWS language=[Language]
-	) OptWS  
-	(taxons+=TaxonRef OptWS)* ":" (texts+=FreeText)*
+	(type="form" | 
+	 type=("gloss" | "translation" | "derived") language=[Language])  
+	(taxons+=TaxonRef)* html=HtmlData ":" text=RichString?
 ;
 
 Syntax: {Syntax}
-	"\\syntax" classes=Classes OptWS meta=MetaData OptWS ":" OptWS (rules+=Rule OptWS)* "\\end"
+	"syntax" (name=ID)? language=[Language] (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":" (rules+=Rule)* "end"
 ;
 Rule:
-	name=ID classes=Classes OptWS "=" OptWS production=Production
+	name=ID html=HtmlData "=" production=Production
 ;
 Production:
 	ChoiceProduction
 ;
 ChoiceProduction:
-	SeqProduction ({Choice.left=current} OptWS op=("+" | "-" | "*" | "&" | "|") OptWS right=SeqProduction)*
+	SeqProduction ({Choice.left=current} op=("+" | "-" | "*" | "&" | "|") right=SeqProduction)*
 ;
 SeqProduction:
-	{Sequence} seq+=SimpleProduction (OptWS seq+=SimpleProduction)*
+	{Sequence} seq+=SimpleProduction ( seq+=SimpleProduction)*
 ;
 SimpleProduction:
 	{NonTerminal} target=[Rule]
 |	{Terminal} text=STRING
-|	{Weighted} weight=FLOAT
-|	"(" OptWS Production OptWS ")"
-|	"[" OptWS {Optional} inner=Production OptWS "]"
-|	"{" OptWS {Repeated} inner=Production OptWS "}"
+|	{Weighted} weight=INT
+|	"(" Production ")"
+|	"[" {Optional} inner=Production "]"
+|	"{" {Repeated} inner=Production "}"
 ;
 
 Taxonomy:
-	{Taxonomy} "\\taxonomy" classes=Classes OptWS meta=MetaData OptWS ":" (OptWS taxons+=Taxon)* OptWS "\\end"
+	{Taxonomy} "taxonomy" (name=ID)? meta=MetaData html=HtmlData ":" (taxons+=Taxon)* "end"
 ;
 Taxon:
-	"\\taxon" classes=Classes OptWS meta=MetaData OptWS ":" (texts+=FreeText)* (OptWS taxons+=Taxon)* OptWS "\\end"
+	"taxon" name=ID (title=STRING)? meta=MetaData html=HtmlData ":" text=RichString? (taxons+=Taxon)* "end"
 ;
 TaxonRef:
 	"#" target=[Taxon]
 ;
-Classes:
-	{Classes} ("." classes+=ID)*
-;
-AnySymbol: "*" | "/" | "?" | "+" | "-" | "." | ":" | "&" | "|" | "(" | ")" | "[" | "]" | "{" | "}";
 
-terminal INSTRUCTION: '\\' ID;
-terminal ID: ('A'..'Z' | 'a'..'z') ('A'..'Z' | 'a'..'z' | '0'..'9')*;
-terminal FLOAT: ('0'..'9')+ ("." ('0'..'9')*)?;
-terminal STRING: '"' (!'"')* '"';
-terminal WS: ' ' | '\n' | '\r' | '\t';
-terminal ANY_OTHER: .;
+
+terminal TEXTSINGLE : '"' (!('$'|'"'))* '"';
+terminal TEXTLEFT : '"' (!('$'|'"'))* '$';
+terminal TEXTRIGHT : '$' (!('$'|'"'))* '"';
+terminal TEXTMIDDLE : '$' (!('$'|'"'))* '$';
+@Override
+terminal STRING:
+			"'" ( '\\' . /* ('b'|'t'|'n'|'f'|'r'|'u'|'"'|"'"|'\\') */ | !('\\'|"'") )* "'"?;
