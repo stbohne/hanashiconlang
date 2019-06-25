@@ -6,7 +6,7 @@ import 'http://www.eclipse.org/xtext/xbase/Xbase' as xbase
 generate hanashi "http://www.hanashiconlang.org/Hanashi"
 
 Document: {Document}
-	( parts+=Declaration)*
+	(parts+=Declaration)*
 ;
 
 Language:
@@ -19,13 +19,6 @@ Declaration:
 |	Taxonomy
 |	Language
 |	Syntax
-;
-
-Section:
-	"section" (name=ID)? title=STRING (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
-	text=RichString?
-	(parts+=Section)*
-	"end"
 ;
 
 MetaData:
@@ -44,30 +37,34 @@ Date:	year=INT "/" month=INT "/" day=INT "-"
 		hour=INT ":" minute=INT ":" second=INT
 ;
 
-RichString returns xbase::XExpression:
+RichString:
 	{RichString} (
     expressions+=RichStringSingle
 |   expressions+=RichStringLeft expressions+=RichStringPart
 	(expressions+=RichStringMiddle expressions+=RichStringPart)* expressions+=RichStringRight
 );
-RichStringSingle returns xbase::XStringLiteral:
+RichStringSingle:
 	{RichStringLiteral} value=TEXTSINGLE
 ;
-RichStringLeft returns xbase::XStringLiteral:
+RichStringLeft:
 	{RichStringLiteral} value=TEXTLEFT
 ;
-RichStringMiddle returns xbase::XStringLiteral:
+RichStringMiddle:
 	{RichStringLiteral} value=TEXTMIDDLE
 ;
-RichStringRight returns xbase::XStringLiteral:
+RichStringRight:
 	{RichStringLiteral} value=TEXTRIGHT
 ;
-RichStringPart returns xbase::XExpression:
-	XExpressionInClosure
-|	Gloss
+RichStringPart:
+	Gloss
 ;
 
-
+Section:
+	"section" (name=ID)? title=STRING (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
+	text=RichString?
+	(parts+=Section)*
+	"end"
+;
 
 Gloss:
 	{Gloss} "GL" (name=ID)? meta=MetaData html=HtmlData 
@@ -137,10 +134,13 @@ TaxonRef:
 ;
 
 
-terminal TEXTSINGLE : '"' (!('$'|'"'))* '"';
-terminal TEXTLEFT : '"' (!('$'|'"'))* '$';
-terminal TEXTRIGHT : '$' (!('$'|'"'))* '"';
-terminal TEXTMIDDLE : '$' (!('$'|'"'))* '$';
+terminal TEXTSINGLE : '"' ('\\' . | !('\\'|'$'|'"'))* '"';
+terminal TEXTLEFT : '"' ('\\' . | !('\\'|'$'|'"'))* '$';
+terminal TEXTRIGHT : '$' ('\\' . | !('\\'|'$'|'"'))* '"';
+terminal TEXTMIDDLE : '$' ('\\' . | !('\\'|'$'|'"'))* '$';
 @Override
 terminal STRING:
 			"'" ( '\\' . /* ('b'|'t'|'n'|'f'|'r'|'u'|'"'|"'"|'\\') */ | !('\\'|"'") )* "'"?;
+@Override
+terminal ID:
+	('a'..'z'|'A'..'Z') ('a'..'z'|'A'..'Z'|'0'..'9'|'-'|'_')*;
