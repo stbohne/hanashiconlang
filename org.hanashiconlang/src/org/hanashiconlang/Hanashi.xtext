@@ -35,7 +35,7 @@ MetaData:
 	(OptWS "\\id" OptWS id=ID)?
 	(OptWS "\\author" OptWS author=STRING)?
 	(OptWS "\\created" OptWS created=Date)?
-	(OptWS "\\modified" OptWS modifed=Date)?
+	(OptWS "\\modified" OptWS modified=Date)?
 	(OptWS "\\version" OptWS version=FLOAT)?
 	(OptWS "\\refclasses" OptWS (refclasses+=(ID | STRING))+)?
 ;
