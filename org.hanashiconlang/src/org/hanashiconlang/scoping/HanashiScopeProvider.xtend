@@ -16,6 +16,7 @@ import org.hanashiconlang.hanashi.Lexicon
 import org.hanashiconlang.hanashi.Morpheme
 import org.hanashiconlang.hanashi.TaxonRef
 import org.hanashiconlang.hanashi.Taxon
+import org.eclipse.xtext.scoping.impl.FilteringScope
 
 /**
  * This class contains custom scoping description.
@@ -28,10 +29,9 @@ class HanashiScopeProvider extends AbstractHanashiScopeProvider {
 		if (context instanceof GlossMorpheme &&
 			reference == HanashiPackage.Literals.GLOSS_MORPHEME__MORPHEME) {
 			val glossLine = EcoreUtil2.getContainerOfType(context, GlossLine)
-			val lexemes = EcoreUtil2.getAllContentsOfType(EcoreUtil2.getRootContainer(context), Morpheme).filter([
-				EcoreUtil2.getContainerOfType(it, Lexicon).language == glossLine.language 
-			])
-			return Scopes.scopeFor(lexemes, QualifiedName.<Morpheme>wrapper[name], IScope.NULLSCOPE)
+			return new FilteringScope(super.getScope(context, reference))[
+				EcoreUtil2.getContainerOfType(it.EObjectOrProxy, Lexicon).language == glossLine.language
+			]
 		} else if (context instanceof TaxonRef &&
 			       reference == HanashiPackage.Literals.TAXON_REF__TARGET) {
 			val taxons = EcoreUtil2.getAllContentsOfType(EcoreUtil2.getRootContainer(context), Taxon)

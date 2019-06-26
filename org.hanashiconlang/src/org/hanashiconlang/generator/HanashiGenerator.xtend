@@ -225,6 +225,9 @@ class HanashiGenerator extends AbstractGenerator {
         «generateTaxon(tx, depth + 1, lang)»
         «ENDFOR»'''
 	}
+	dispatch def generateDeclaration(Syntax s, int depth, Language lang) {
+		""
+	}
 	dispatch def generateDeclaration(Language l, int depth, Language lang) {
 		""
 	}
