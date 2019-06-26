@@ -3,9 +3,19 @@
  */
 package org.hanashiconlang
 
+import org.hanashiconlang.generator.HanashiGenerator
+import org.eclipse.xtext.generator.IGenerator2
+import org.eclipse.xtext.conversion.IValueConverterService
+import org.hanashiconlang.conversion.HanashiValueConverterService
 
 /**
  * Use this class to register components to be used at runtime / without the Equinox extension registry.
  */
 class HanashiRuntimeModule extends AbstractHanashiRuntimeModule {
+	override def Class<? extends IGenerator2> bindIGenerator2() {
+		HanashiGenerator
+	}
+    override Class<? extends IValueConverterService> bindIValueConverterService() {
+        HanashiValueConverterService
+    }
 }

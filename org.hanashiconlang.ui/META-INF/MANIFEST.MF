@@ -24,6 +24,5 @@ Import-Package: org.apache.log4j
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Export-Package: org.hanashiconlang.ui.quickfix,
  org.hanashiconlang.ui.contentassist,
- org.hanashiconlang.ui.internal,
- org.hanashiconlang.ui.editor
+ org.hanashiconlang.ui.internal
 Bundle-Activator: org.hanashiconlang.ui.internal.HanashiconlangActivator

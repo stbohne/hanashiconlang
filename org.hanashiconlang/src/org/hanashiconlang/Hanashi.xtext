@@ -1,7 +1,6 @@
-grammar org.hanashiconlang.Hanashi 
-	with org.eclipse.xtext.xbase.annotations.XbaseWithAnnotations
+grammar org.hanashiconlang.Hanashi hidden(WS, ML_COMMENT, SL_COMMENT)
 
-import 'http://www.eclipse.org/xtext/xbase/Xbase' as xbase
+import "http://www.eclipse.org/emf/2002/Ecore" as ecore
 
 generate hanashi "http://www.hanashiconlang.org/Hanashi"
 
@@ -10,7 +9,7 @@ Document: {Document}
 ;
 
 Language:
-	"language" name=ID title=STRING
+	"language" name=ID title=RichString
 ;
 	
 Declaration:
@@ -23,15 +22,15 @@ Declaration:
 
 MetaData:
 	{MetaData}
-	("author" author=(ID | STRING))?
+	("author" author=RichString)?
 	("created" created=Date)?
 	("modified" modified=Date)?
-	("version" version=STRING)?
+	("version" version=RichString)?
 ;
 HtmlData:
 	{HtmlData}
-	("class" class=(ID | STRING))?
-	("refclass" refclass=(ID | STRING))?
+	("class" class=RichString)?
+	("refclass" refclass=RichString)?
 ;
 Date:	year=INT "/" month=INT "/" day=INT "-" 
 		hour=INT ":" minute=INT ":" second=INT
@@ -44,7 +43,7 @@ RichString:
 	(expressions+=RichStringMiddle expressions+=RichStringPart)* expressions+=RichStringRight
 );
 RichStringSingle:
-	{RichStringLiteral} value=TEXTSINGLE
+	{RichStringLiteral} value=(TEXTSINGLE | ID)
 ;
 RichStringLeft:
 	{RichStringLiteral} value=TEXTLEFT
@@ -60,7 +59,7 @@ RichStringPart:
 ;
 
 Section:
-	"section" (name=ID)? title=STRING (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
+	"section" (name=ID)? title=RichString (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
 	text=RichString?
 	(parts+=Section)*
 	"end"
@@ -74,18 +73,19 @@ GlossLine:
 	language=[Language] ":" (words+=GlossWord)*
 ;
 GlossWord:
-	items+=GlossItem ("~" items+=GlossItem)*
+	items+=GlossItem ("~" items+=GlossItem)* 
+	(skips+=GlossSkip)*
 ;
 GlossItem:
 	{GlossMorpheme} morpheme=[Morpheme] (taxons+=TaxonRef)*
-|	{GlossString} string=(STRING | "," | "-" | "." | ":" | ";" | "(" | ")" | "/" | "?" | "!")
+|	{GlossString} string=("," | "-" | "." | ":" | ";" | "(" | ")" | "/" | "?" | "!")
 |	{GlossRichString} string=RichString
-|	{GlossSkip} ">"
 ;
+GlossSkip: {GlossSkip} ">";
 
 Lexicon:
 	"lexicon" (name=ID)? language=[Language] (taxons+=TaxonRef)* meta=MetaData html=HtmlData 
-	("morphemerefclasses" ( morphemerefclasses+=(ID | STRING))+)? ":"
+	("morphemerefclass" morphemerefclass=RichString)? ":"
 	(morphemes+=Morpheme)*
 	"end"
 ;
@@ -116,7 +116,7 @@ SeqProduction:
 ;
 SimpleProduction:
 	{NonTerminal} target=[Rule]
-|	{Terminal} text=STRING
+|	{Terminal} text=RichString
 |	{Weighted} weight=INT
 |	"(" Production ")"
 |	"[" {Optional} inner=Production "]"
@@ -127,7 +127,7 @@ Taxonomy:
 	{Taxonomy} "taxonomy" (name=ID)? meta=MetaData html=HtmlData ":" (taxons+=Taxon)* "end"
 ;
 Taxon:
-	"taxon" name=ID (title=STRING)? meta=MetaData html=HtmlData ":" text=RichString? (taxons+=Taxon)* "end"
+	"taxon" name=ID (title=RichString)? meta=MetaData html=HtmlData ":" text=RichString? (taxons+=Taxon)* "end"
 ;
 TaxonRef:
 	"#" target=[Taxon]
@@ -138,9 +138,12 @@ terminal TEXTSINGLE : '"' ('\\' . | !('\\'|'$'|'"'))* '"';
 terminal TEXTLEFT : '"' ('\\' . | !('\\'|'$'|'"'))* '$';
 terminal TEXTRIGHT : '$' ('\\' . | !('\\'|'$'|'"'))* '"';
 terminal TEXTMIDDLE : '$' ('\\' . | !('\\'|'$'|'"'))* '$';
-@Override
-terminal STRING:
-			"'" ( '\\' . /* ('b'|'t'|'n'|'f'|'r'|'u'|'"'|"'"|'\\') */ | !('\\'|"'") )* "'"?;
-@Override
-terminal ID:
-	('a'..'z'|'A'..'Z') ('a'..'z'|'A'..'Z'|'0'..'9'|'-'|'_')*;
+terminal ID: ('a'..'z'|'A'..'Z'|'_') ('a'..'z'|'A'..'Z'|'_'|'0'..'9'|'\''|'-')*;
+terminal INT returns ecore::EInt: ('0'..'9')+;
+terminal ML_COMMENT : '/*' -> '*/';
+terminal SL_COMMENT : '//' !('\n'|'\r')* ('\r'? '\n')?;
+
+terminal WS         : (' '|'\t'|'\r'|'\n')+;
+
+terminal ANY_OTHER: .;
+	
