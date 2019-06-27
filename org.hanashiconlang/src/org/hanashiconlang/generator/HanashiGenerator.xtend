@@ -3,40 +3,62 @@
  */
 package org.hanashiconlang.generator
 
-import java.util.stream.IntStream
 import org.eclipse.emf.common.util.EList
 import org.eclipse.emf.ecore.resource.Resource
+import org.eclipse.xtext.EcoreUtil2
 import org.eclipse.xtext.generator.AbstractGenerator
 import org.eclipse.xtext.generator.IFileSystemAccess2
 import org.eclipse.xtext.generator.IGeneratorContext
-import org.hanashiconlang.hanashi.Choice
+import org.hanashiconlang.hanashi.Call
 import org.hanashiconlang.hanashi.Document
 import org.hanashiconlang.hanashi.Gloss
 import org.hanashiconlang.hanashi.GlossMorpheme
+import org.hanashiconlang.hanashi.GlossRichString
+import org.hanashiconlang.hanashi.GlossSkip
+import org.hanashiconlang.hanashi.GlossString
 import org.hanashiconlang.hanashi.GlossWord
 import org.hanashiconlang.hanashi.Language
-import org.hanashiconlang.hanashi.Morpheme
-import org.hanashiconlang.hanashi.NonTerminal
-import org.hanashiconlang.hanashi.Optional
-import org.hanashiconlang.hanashi.Repeated
-import org.hanashiconlang.hanashi.Section
-import org.hanashiconlang.hanashi.Sequence
-import org.hanashiconlang.hanashi.Syntax
-import org.hanashiconlang.hanashi.Terminal
-import org.hanashiconlang.hanashi.Weighted
-
-import static extension java.util.stream.IntStream.*
 import org.hanashiconlang.hanashi.Lexicon
-import org.hanashiconlang.hanashi.Taxonomy
-import org.hanashiconlang.hanashi.Taxon
-import org.eclipse.xtext.EcoreUtil2
+import org.hanashiconlang.hanashi.Morpheme
 import org.hanashiconlang.hanashi.RichString
 import org.hanashiconlang.hanashi.RichStringLiteral
-import org.hanashiconlang.hanashi.GlossString
-import org.hanashiconlang.hanashi.GlossRichString
-import java.util.Arrays
-import com.google.common.collect.Iterables
-import org.hanashiconlang.hanashi.GlossSkip
+import org.hanashiconlang.hanashi.Section
+import org.hanashiconlang.hanashi.Syntax
+import org.hanashiconlang.hanashi.Taxon
+
+interface HanashiFunction {
+    def CharSequence generate(Iterable<CharSequence> text)
+    def CharSequence string(Iterable<CharSequence> text)
+}
+class HanashiFunctions {
+    public static val p = new HanashiFunction {
+        override generate(Iterable<CharSequence> text) 
+            '''<p>«text.join(" ")»</p>'''
+        override string(Iterable<CharSequence> text) {
+            text.join(" ")
+        }
+    }
+    public static val br = new HanashiFunction {
+        override generate(Iterable<CharSequence> text) '''<br/>'''
+        override string(Iterable<CharSequence> text) ''''''
+    }
+    public static val bo = new HanashiFunction {
+        override generate(Iterable<CharSequence> text) { "{" }
+        override string(Iterable<CharSequence> text) { "{" }
+    }    
+    public static val bc = new HanashiFunction {
+        override generate(Iterable<CharSequence> text) { "}" }
+        override string(Iterable<CharSequence> text) { "}" }
+    }    
+    public static val nl = new HanashiFunction {
+        override generate(Iterable<CharSequence> text) { "\n" }
+        override string(Iterable<CharSequence> text) { "\n" }
+    }    
+    public static val tab = new HanashiFunction {
+        override generate(Iterable<CharSequence> text) { "\t" }
+        override string(Iterable<CharSequence> text) { "\t" }
+    }    
+}
 
 /**
  * Generates code from your model files on save.
@@ -77,17 +99,24 @@ class HanashiGenerator extends AbstractGenerator {
 	def CharSequence formString(Morpheme l, Language lang) {
 		richString2String(l.entries?.findFirst[e| 
 			e.type=="form"
-		]?.text, lang)
+		]?.text, lang) ?: l.name
 	}
+    def Iterable<CharSequence> formStrings(Morpheme l, Language lang) {
+        val forms = l.entries?.
+            filter[type=="form"]?.
+            map[richString2String(it.text, lang)]
+        if (forms.nullOrEmpty) #[l.name]
+        else forms
+    }
 	def CharSequence glossString(Morpheme l, Language lang) {
 		richString2String(l.entries?.findFirst[e| 
 			e.type=="gloss" && e.language == lang
-		]?.text, lang)
+		]?.text, lang) ?: ""
 	}
 	def CharSequence translationString(Morpheme l, Language lang) {
 		richString2String(l.entries?.findFirst[e| 
 			e.type=="translation" && e.language == lang
-		]?.text, lang)
+		]?.text, lang) ?: ""
 	}
 
 	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
@@ -114,11 +143,11 @@ class HanashiGenerator extends AbstractGenerator {
 		
 	}
 
-	def generateRichString(RichString s, Language lang) {
-		if (s != null)
+	def CharSequence generateRichString(RichString s, Language lang) {
+		if (s !== null)
 			'''«FOR e: s.expressions»«generateRichStringExpression(e, lang)»«ENDFOR»'''
 		else 
-			''
+			null
 	}
 	dispatch def generateRichStringExpression(RichStringLiteral l, Language lang) {
 		l.value
@@ -139,12 +168,19 @@ class HanashiGenerator extends AbstractGenerator {
 		    «ENDFOR»
 		</table>'''
 	}
+	dispatch def generateRichStringExpression(Call c, Language lang) {
+	    val func = richString2String(c.function, lang).toString
+	    val field = HanashiFunctions.getDeclaredField(func)
+	    (field.get(null) as HanashiFunction).generate(
+	        c.arguments.map[generateRichString(it, lang)]
+	    )
+	}
 	
-	def richString2String(RichString s, Language lang) {
-		if (s != null)
+	def CharSequence richString2String(RichString s, Language lang) {
+		if (s !== null)
 			'''«FOR e: s.expressions»«richStringExpression2String(e, lang)»«ENDFOR»'''
 		else
-			''
+			null
 	}
 	dispatch def richStringExpression2String(RichStringLiteral l, Language lang) {
 		l.value
@@ -152,6 +188,13 @@ class HanashiGenerator extends AbstractGenerator {
 	dispatch def richStringExpression2String(Gloss g, Language lang) {
 		glossWords2String(g.lines.get(0).words, lang)
 	}
+    dispatch def CharSequence richStringExpression2String(Call c, Language lang) {
+        val func = richString2String(c.function, lang).toString
+        val field = HanashiFunctions.getDeclaredField(func)
+        (field.get(null) as HanashiFunction).string(
+            c.arguments.map[richStringExpression2String(it, lang)]
+        )
+    }
 	
 	def generateGlossWordsText(EList<GlossWord> gws, Language lang) 
 		'''«FOR gw: gws»<td style="padding:0.1em" «
@@ -203,7 +246,7 @@ class HanashiGenerator extends AbstractGenerator {
 		''
 	}
 	
-	dispatch def generateDeclaration(Section s, int depth, Language lang) {
+	dispatch def CharSequence generateDeclaration(Section s, int depth, Language lang) {
 		val classes = #["section"] + (richString2String(s.html.class_, lang)?.toString?.split(" ") ?: newArrayOfSize(0))
 		'''<h«depth» id="section$«s.name»" class="«classes.join(" ")»">«generateRichString(s.title, lang)»</h1>
 		«generateRichString(s.text, lang)»
@@ -218,12 +261,10 @@ class HanashiGenerator extends AbstractGenerator {
         «generateMorpheme(m, depth + 1, lang)»
         «ENDFOR»'''
 	}
-	dispatch def generateDeclaration(Taxonomy t, int depth, Language lang) {
+	dispatch def generateDeclaration(Taxon t, int depth, Language lang) {
         val classes = #["taxonomy"] + (richString2String(t.html.class_, lang)?.toString?.split(" ") ?: newArrayOfSize(0))
         '''<h«depth»«IF !t.name.nullOrEmpty» id="taxonomy$«t.name»"«ENDIF» class="«classes.join(" ")»">Taxonomy</h1>
-        «FOR tx: t.taxons»
-        «generateTaxon(tx, depth + 1, lang)»
-        «ENDFOR»'''
+        «generateTaxon(t, depth + 1, lang)»'''
 	}
 	dispatch def generateDeclaration(Syntax s, int depth, Language lang) {
 		""
@@ -235,7 +276,7 @@ class HanashiGenerator extends AbstractGenerator {
 	def generateMorpheme(Morpheme m, int depth, Language lang) {
 		val classes = #["morpheme"] + (richString2String(m.html.class_, lang)?.toString?.split(" ") ?: newArrayOfSize(0))
 		'''<div class="«classes.join(" ")»">
-		<b id="morpheme$«m.language.name»$«m.name»">«FOR e: m.entries.filter[e| e.type == "form"] SEPARATOR " / "»«richString2String(e.text, lang)»«ENDFOR»</b>
+		<b id="morpheme$«m.language.name»$«m.name»">«m.formStrings(lang).join(" / ")»</b>
 		«FOR t: m.taxons SEPARATOR " "»<a href="#taxon$«t.target.name»">«t.target.name»</a>«ENDFOR»
 		«FOR e: m.entries.filter[type == "translation"] BEFORE "<p>Translations:<dl>\n" AFTER "</dl></p>"»
 		<dd>«generateRichString(e.language.title, lang)»</dd>
@@ -248,7 +289,7 @@ class HanashiGenerator extends AbstractGenerator {
 		</div>'''
 	}
 
-	def generateTaxon(Taxon t, int depth, Language lang) {
+	def CharSequence generateTaxon(Taxon t, int depth, Language lang) {
         val classes = #["taxon"] + (richString2String(t.html.class_, lang)?.toString?.split(" ") ?: newArrayOfSize(0))
         val parent = EcoreUtil2.getContainerOfType(t.eContainer, Taxon)
 		'''<div class="«classes.join(" ")»">

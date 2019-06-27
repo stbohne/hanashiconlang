@@ -7,15 +7,29 @@ import org.hanashiconlang.generator.HanashiGenerator
 import org.eclipse.xtext.generator.IGenerator2
 import org.eclipse.xtext.conversion.IValueConverterService
 import org.hanashiconlang.conversion.HanashiValueConverterService
+import org.eclipse.xtext.naming.IQualifiedNameProvider
+import com.google.inject.Binder
+import org.eclipse.xtext.scoping.IScopeProvider
+import com.google.inject.name.Names
+import org.eclipse.xtext.scoping.impl.AbstractDeclarativeScopeProvider
+import org.hanashiconlang.scoping.HanashiImportedNamespaceAwareLocalScopeProvider
 
 /**
  * Use this class to register components to be used at runtime / without the Equinox extension registry.
  */
 class HanashiRuntimeModule extends AbstractHanashiRuntimeModule {
-	override def Class<? extends IGenerator2> bindIGenerator2() {
+	override Class<? extends IGenerator2> bindIGenerator2() {
 		HanashiGenerator
 	}
     override Class<? extends IValueConverterService> bindIValueConverterService() {
         HanashiValueConverterService
+    }
+    override Class<? extends IQualifiedNameProvider> bindIQualifiedNameProvider() {
+        HanashiQualifiedNameProvider
+    }
+    override configureIScopeProviderDelegate(Binder binder) {
+        binder.bind(IScopeProvider).
+            annotatedWith(Names.named(AbstractDeclarativeScopeProvider.NAMED_DELEGATE)).
+            to(HanashiImportedNamespaceAwareLocalScopeProvider);
     }
 }

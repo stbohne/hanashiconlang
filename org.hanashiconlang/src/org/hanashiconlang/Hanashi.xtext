@@ -5,37 +5,43 @@ import "http://www.eclipse.org/emf/2002/Ecore" as ecore
 generate hanashi "http://www.hanashiconlang.org/Hanashi"
 
 Document: {Document}
+    (imports+=Import)*
 	(parts+=Declaration)*
 ;
+Import: "import" importedNamespace=(Name | TEXTSINGLE);
 
 Language:
-	"language" name=ID title=RichString
+	"language" name=Name title=RichString
 ;
 	
 Declaration:
 	Section
 |   Lexicon
-|	Taxonomy
+|	Taxon
 |	Language
 |	Syntax
 ;
 
 MetaData:
 	{MetaData}
-	("author" author=RichString)?
-	("created" created=Date)?
-	("modified" modified=Date)?
-	("version" version=RichString)?
+	("author" author=RichStringOrName)?
+	("created" created=RichStringOrName)?
+	("modified" modified=RichStringOrName)?
+	("version" version=RichStringOrName)?
 ;
 HtmlData:
 	{HtmlData}
-	("class" class=RichString)?
-	("refclass" refclass=RichString)?
-;
-Date:	year=INT "/" month=INT "/" day=INT "-" 
-		hour=INT ":" minute=INT ":" second=INT
+	("class" class=RichStringOrName)?
+	("refclass" refclass=RichStringOrName)?
 ;
 
+RichStringOrName returns RichString:
+    {RichString} expressions+=RichStringName
+|   RichString
+;
+RichStringName:
+    {RichStringLiteral} value=Name
+;
 RichString:
 	{RichString} (
     expressions+=RichStringSingle
@@ -43,7 +49,7 @@ RichString:
 	(expressions+=RichStringMiddle expressions+=RichStringPart)* expressions+=RichStringRight
 );
 RichStringSingle:
-	{RichStringLiteral} value=(TEXTSINGLE | ID)
+	{RichStringLiteral} value=TEXTSINGLE
 ;
 RichStringLeft:
 	{RichStringLiteral} value=TEXTLEFT
@@ -55,55 +61,56 @@ RichStringRight:
 	{RichStringLiteral} value=TEXTRIGHT
 ;
 RichStringPart:
-	Gloss
+	=> "gl" Gloss
+|   {Call} function=RichStringOrName (arguments+=RichStringOrName)*
 ;
 
 Section:
-	"section" (name=ID)? title=RichString (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
+	"section" (name=Name)? title=RichString (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
 	text=RichString?
 	(parts+=Section)*
 	"end"
 ;
 
 Gloss:
-	{Gloss} "GL" (name=ID)? meta=MetaData html=HtmlData 
+	{Gloss} (name=Name)? meta=MetaData html=HtmlData 
 			lines+=GlossLine ("\\\\" lines+=GlossLine)* "\\\\"?
 ;
 GlossLine:
-	language=[Language] ":" (words+=GlossWord)*
+	language=[Language|Name] ":" (words+=GlossWord)*
 ;
 GlossWord:
 	items+=GlossItem ("~" items+=GlossItem)* 
 	(skips+=GlossSkip)*
 ;
 GlossItem:
-	{GlossMorpheme} morpheme=[Morpheme] (taxons+=TaxonRef)*
-|	{GlossString} string=("," | "-" | "." | ":" | ";" | "(" | ")" | "/" | "?" | "!")
+	{GlossMorpheme} morpheme=[Morpheme|Name] (taxons+=TaxonRef)*
+|	{GlossString} string=("," | "-" | "." | ":" | ";" | "(" | ")" | "[" | "]" | "/" | "?" | "!")
 |	{GlossRichString} string=RichString
 ;
 GlossSkip: {GlossSkip} ">";
 
 Lexicon:
-	"lexicon" (name=ID)? language=[Language] (taxons+=TaxonRef)* meta=MetaData html=HtmlData 
-	("morphemerefclass" morphemerefclass=RichString)? ":"
+	"lexicon" (name=Name)? language=[Language|Name] (taxons+=TaxonRef)* meta=MetaData html=HtmlData 
+	("morphemerefclass" morphemerefclass=RichStringOrName)? ":"
 	(morphemes+=Morpheme)*
 	"end"
 ;
 Morpheme:
-	"morpheme" name=ID (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
+	"morpheme" name=Name (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
 	(entries+=MorphemeEntry)*
 ;
 MorphemeEntry:
 	(type="form" | 
-	 type=("gloss" | "translation" | "derived") language=[Language])  
+	 type=("gloss" | "translation" | "derived") language=[Language|Name])  
 	(taxons+=TaxonRef)* html=HtmlData ":" text=RichString?
 ;
 
 Syntax: {Syntax}
-	"syntax" (name=ID)? language=[Language] (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":" (rules+=Rule)* "end"
+	"syntax" (name=Name)? language=[Language|Name] (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":" (rules+=Rule)* "end"
 ;
 Rule:
-	name=ID html=HtmlData "=" production=Production
+	name=Name html=HtmlData "=" production=Production ";"
 ;
 Production:
 	ChoiceProduction
@@ -115,35 +122,46 @@ SeqProduction:
 	{Sequence} seq+=SimpleProduction ( seq+=SimpleProduction)*
 ;
 SimpleProduction:
-	{NonTerminal} target=[Rule]
+	{NonTerminal} target=[Rule|Name]
 |	{Terminal} text=RichString
-|	{Weighted} weight=INT
+|	{Weighted} '^' weight=RichString
 |	"(" Production ")"
 |	"[" {Optional} inner=Production "]"
 |	"{" {Repeated} inner=Production "}"
 ;
 
-Taxonomy:
-	{Taxonomy} "taxonomy" (name=ID)? meta=MetaData html=HtmlData ":" (taxons+=Taxon)* "end"
-;
 Taxon:
 	"taxon" name=ID (title=RichString)? meta=MetaData html=HtmlData ":" text=RichString? (taxons+=Taxon)* "end"
 ;
 TaxonRef:
-	"#" target=[Taxon]
+	"#" target=[Taxon|Name]
 ;
 
+Name: ID | "syntax" | "taxon" | "form" | "gloss" | "translation" | "derived" | 
+      "morpheme" | "section" | "lexicon" | "morphemerefclass" | "gl" |
+      "author" | "created" | "modified" | "version" | "class" | "refclass" | 
+      "language" | "import";
 
-terminal TEXTSINGLE : '"' ('\\' . | !('\\'|'$'|'"'))* '"';
-terminal TEXTLEFT : '"' ('\\' . | !('\\'|'$'|'"'))* '$';
-terminal TEXTRIGHT : '$' ('\\' . | !('\\'|'$'|'"'))* '"';
-terminal TEXTMIDDLE : '$' ('\\' . | !('\\'|'$'|'"'))* '$';
-terminal ID: ('a'..'z'|'A'..'Z'|'_') ('a'..'z'|'A'..'Z'|'_'|'0'..'9'|'\''|'-')*;
-terminal INT returns ecore::EInt: ('0'..'9')+;
-terminal ML_COMMENT : '/*' -> '*/';
+
+terminal fragment MLC_OTH      : !( '-' | '{' | '}' );
+terminal fragment MLC_OTH_RP   : !( '-' | '{' );
+terminal fragment MLC_LP_TOK   : '{'+ ( '-' MLC_BODY | MLC_OTH_RP );
+terminal fragment MLC_X_TOK    : '-'+ ( MLC_OTH | MLC_LP_TOK );
+terminal fragment MLC_BODY     : ( MLC_OTH_RP | MLC_LP_TOK | MLC_X_TOK )* '-'+ '}';
+terminal ML_COMMENT            : '{-' MLC_BODY;
 terminal SL_COMMENT : '//' !('\n'|'\r')* ('\r'? '\n')?;
+terminal TEXTSINGLE : '{' (!('{'|'}'))* '}';
+terminal TEXTLEFT : '{' (!('{'|'}'))* '{';
+terminal TEXTRIGHT : '}' (!('{'|'}'))* '}';
+terminal TEXTMIDDLE : '}' (!('{'|'}'))* '{';
+terminal fragment LETTER: 
+    'a'..'z' | 'A'..'Z' | '\u00C0'..'\u00D6' | '\u00C8'..'\u00F6' | '\u00F8'..'\u1FFE' |
+    '\u2E80'..'\u2FD5' | '\u3041'..'\u31FF';
+terminal ID: (LETTER|'0'..'9'|'_'|'\'') (LETTER|'_'|'0'..'9'|'\''|'-')*;
 
-terminal WS         : (' '|'\t'|'\r'|'\n')+;
+terminal WS: (' '|'\t'|'\r'|'\n'|
+              '\u00A0'|'\u1680'|'\u180E'|'\u2000'..'\u200B'|'\u202F'|
+              '\u205F'|'\u3000'|'\uFEFF')+;
 
 terminal ANY_OTHER: .;
 	

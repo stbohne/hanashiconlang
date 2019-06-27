@@ -28,6 +28,5 @@ Export-Package: org.hanashiconlang.generator,
  org.hanashiconlang.hanashi.util,
  org.hanashiconlang.validation,
  org.hanashiconlang,
- org.hanashiconlang.serializer,
- org.hanashiconlang.jvmmodel
+ org.hanashiconlang.serializer
 Import-Package: org.apache.log4j

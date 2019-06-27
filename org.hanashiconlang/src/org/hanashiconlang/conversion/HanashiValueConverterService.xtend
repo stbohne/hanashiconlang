@@ -1,16 +1,15 @@
 package org.hanashiconlang.conversion
 
-import org.eclipse.xtext.xbase.conversion.XbaseValueConverterService
-import org.eclipse.xtext.conversion.ValueConverter
-import org.eclipse.xtext.conversion.IValueConverter
-import org.eclipse.xtext.nodemodel.INode
-import org.eclipse.xtext.conversion.impl.STRINGValueConverter
 import org.eclipse.xtext.AbstractRule
+import org.eclipse.xtext.conversion.ValueConverter
+import org.eclipse.xtext.conversion.impl.STRINGValueConverter
+import org.eclipse.xtext.nodemodel.INode
+import org.eclipse.xtext.xbase.conversion.XbaseValueConverterService
 
 class HanashiValueConverterService extends XbaseValueConverterService {
     
-    private val richTextConverter = new STRINGValueConverter {
-        private var AbstractRule rule
+    val richTextConverter = new STRINGValueConverter {
+        var AbstractRule rule
         override toValue(String string, INode node) {
             if (string !== null && string.length >= 2)
                 super.toValue("\"" + string.substring(1, string.length - 1) + "\"", node)

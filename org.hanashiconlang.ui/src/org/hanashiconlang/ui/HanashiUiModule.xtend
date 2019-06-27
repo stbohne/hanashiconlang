@@ -4,10 +4,15 @@
 package org.hanashiconlang.ui
 
 import org.eclipse.xtend.lib.annotations.FinalFieldsConstructor
+import org.hanashiconlang.ui.syntaxcoloring.HanashiTokenToAttributeMapper
+import org.eclipse.xtext.ui.editor.syntaxcoloring.AbstractAntlrTokenToAttributeIdMapper
 
 /**
  * Use this class to register components to be used within the Eclipse IDE.
  */
 @FinalFieldsConstructor
 class HanashiUiModule extends AbstractHanashiUiModule {
+    def Class<? extends AbstractAntlrTokenToAttributeIdMapper> bindAbstractAntlrTokenToAttributeIdMapper() {
+        HanashiTokenToAttributeMapper
+    }
 }
