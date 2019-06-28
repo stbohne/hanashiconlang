@@ -62,14 +62,23 @@ RichStringRight:
 ;
 RichStringPart:
 	=> "gl" Gloss
+|	=> "table" Table
+|	=> "fn" Footnote
 |   {Call} function=RichStringOrName (arguments+=RichStringOrName)*
 ;
 
-Section:
-	"section" (name=Name)? title=RichString (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
-	text=RichString?
-	(parts+=Section)*
-	"end"
+Footnote:
+	{Footnote} text=RichString
+;
+
+Table:
+	{Table} (name=Name)? meta=MetaData html=HtmlData (rows+=TableRow)*
+;
+TableRow:
+	{TableRow} "tr" (cols+=TableCol)*
+;
+TableCol:
+	{TableCol} (header?="th" | "td") text=RichStringOrName (skips+=">")*
 ;
 
 Gloss:
@@ -89,6 +98,13 @@ GlossItem:
 |	{GlossRichString} string=RichString
 ;
 GlossSkip: {GlossSkip} ">";
+
+Section:
+	"section" (name=Name)? title=RichString (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
+	text=RichString?
+	(parts+=Section)*
+	"end"
+;
 
 Lexicon:
 	"lexicon" (name=Name)? language=[Language|Name] (taxons+=TaxonRef)* meta=MetaData html=HtmlData 
