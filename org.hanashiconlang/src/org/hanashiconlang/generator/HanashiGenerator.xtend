@@ -41,7 +41,31 @@ class HanashiFunctions {
     public static val tab = new HanashiFunction {
         override generate(Iterable<CharSequence> text) { "\t" }
         override string(Iterable<CharSequence> text) { "\t" }
-    }    
+    }   
+    public static val ul = new HanashiFunction {
+        override generate(Iterable<CharSequence> text) '''
+        	<ul>«FOR i: text»<li>«i»</li>«ENDFOR»</ul>
+        '''
+        override string(Iterable<CharSequence> text) '''
+        	«FOR i: text SEPARATOR "\n"»«i»«ENDFOR»
+        '''
+    } 
+    public static val ol = new HanashiFunction {
+        override generate(Iterable<CharSequence> text) '''
+        	<ol>«FOR i: text»<li>«i»</li>«ENDFOR»</ol>
+        '''
+        override string(Iterable<CharSequence> text) '''
+        	«FOR i: text SEPARATOR "\n"»«i»«ENDFOR»
+        '''
+    } 
+    public static val em = new HanashiFunction {
+        override generate(Iterable<CharSequence> text) '''
+        	<em>«FOR i: text»«i»«ENDFOR»</em>
+        '''
+        override string(Iterable<CharSequence> text) '''
+        	«FOR i: text»«i»«ENDFOR»
+        '''
+    } 
 }
 
 /**
@@ -84,7 +108,7 @@ class HanashiGenerator extends AbstractGenerator {
 			<style>
 			a:link { text-decoration: none; }
 			a:hover { text-decoration: underline; }
-			table.gloss { border: 0; }
+			table.gloss { border: 0; display: inline-table; }
 			.gloss-info { font-size:66%; line-height:20%; }
 			</style>
 			</head>

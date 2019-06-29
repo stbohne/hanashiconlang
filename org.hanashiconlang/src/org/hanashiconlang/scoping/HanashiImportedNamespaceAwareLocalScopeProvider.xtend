@@ -6,7 +6,7 @@ import org.eclipse.emf.ecore.EObject
 class HanashiImportedNamespaceAwareLocalScopeProvider extends ImportedNamespaceAwareLocalScopeProvider {
     
     override getImportedNamespace(EObject object) {
-        super.getImportedNamespace(object) + ".*"
+        super.getImportedNamespace(object)?.operator_plus(".*")
     }
     
 }

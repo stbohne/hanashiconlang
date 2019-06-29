@@ -1,40 +1,42 @@
 package org.hanashiconlang.generator
 
-import org.hanashiconlang.hanashi.Language
-import org.hanashiconlang.hanashi.RichString
-import org.hanashiconlang.hanashi.RichStringLiteral
-import org.hanashiconlang.hanashi.GlossMorpheme
-import org.hanashiconlang.hanashi.Call
-import org.hanashiconlang.hanashi.TableRow
-import org.hanashiconlang.hanashi.TableCol
-import org.hanashiconlang.hanashi.Gloss
+import java.util.ArrayList
+import java.util.function.Function
+import java.util.regex.Pattern
 import org.eclipse.emf.common.util.EList
-import org.hanashiconlang.hanashi.GlossWord
-import org.hanashiconlang.hanashi.GlossString
+import org.eclipse.xtext.EcoreUtil2
+import org.eclipse.xtext.util.Tuples
+import org.hanashiconlang.hanashi.Call
+import org.hanashiconlang.hanashi.Footnote
+import org.hanashiconlang.hanashi.Gloss
+import org.hanashiconlang.hanashi.GlossMorpheme
 import org.hanashiconlang.hanashi.GlossRichString
 import org.hanashiconlang.hanashi.GlossSkip
-import java.util.regex.Pattern
-import static extension org.hanashiconlang.HanashiExtensions.*
-import org.hanashiconlang.hanashi.Morpheme
-import org.hanashiconlang.hanashi.Table
-import org.hanashiconlang.hanashi.Taxon
+import org.hanashiconlang.hanashi.GlossString
+import org.hanashiconlang.hanashi.GlossWord
+import org.hanashiconlang.hanashi.Language
 import org.hanashiconlang.hanashi.Lexicon
+import org.hanashiconlang.hanashi.Morpheme
+import org.hanashiconlang.hanashi.RichString
+import org.hanashiconlang.hanashi.RichStringLiteral
 import org.hanashiconlang.hanashi.Section
 import org.hanashiconlang.hanashi.Syntax
-import org.eclipse.xtext.EcoreUtil2
-import java.util.function.Function
+import org.hanashiconlang.hanashi.Table
+import org.hanashiconlang.hanashi.TableCol
+import org.hanashiconlang.hanashi.TableRow
+import org.hanashiconlang.hanashi.Taxon
 import org.eclipse.xtext.util.Pair
-import org.eclipse.xtext.util.Triple
-import org.eclipse.xtext.util.Tuples
-import java.util.ArrayList
-import java.util.List
-import org.hanashiconlang.hanashi.Footnote
+
+import static extension org.hanashiconlang.HanashiExtensions.*
+import java.util.HashMap
 
 class HanashiRenderer {
 	var Language lang
 	val postFuncs = new ArrayList<Function<CharSequence, CharSequence>>
 	var footnoteHumanCounter = 1
 	var footnoteGlobalCounter = 0
+	val footnoteHash = new HashMap<String, Pair<Integer, Integer>>()
+	
 	new(Language lang) {
 		this.lang = lang
 	}
@@ -129,14 +131,18 @@ class HanashiRenderer {
 		'''«IF c.header»<th«colspan»>«text»</th>«ELSE»<td«colspan»>«text»</td>«ENDIF»'''
 	}
 	dispatch def generateRichStringExpression(Footnote f, boolean trimLeft, boolean trimRight) {
-		val humanCounter = footnoteHumanCounter
-		val globalCounter = footnoteGlobalCounter
-		footnoteHumanCounter += 1
-		footnoteGlobalCounter += 1
-		postFuncs.add[
-			'''«it»<p id="#footnote-«globalCounter»"><sup>«humanCounter»</sup> «generateRichString(f.text, false)»</p>'''
-		]
-		Tuples.create('''<a href="#footnote-«globalCounter»"><sup>«humanCounter»</sup></a>''', false)
+		val name = if (f.target != null) f.target.name else f.name
+		if (!footnoteHash.containsKey(name)) {
+			footnoteHash.put(name, Tuples.create(footnoteHumanCounter, footnoteGlobalCounter))
+			footnoteHumanCounter += 1
+			footnoteGlobalCounter += 1
+		}
+		val counters = footnoteHash.get(name)
+		if (f.target == null)
+			postFuncs.add[
+				'''«it»<p id="#footnote-«counters.second»"><sup>«counters.first»</sup> «generateRichString(f.text, false)»</p>'''
+			]
+		Tuples.create('''<a href="#footnote-«counters.second»"><sup>«counters.first»</sup></a>''', false)
 	}
 	def generatePostFuncs(CharSequence text) {
 		var result = text
