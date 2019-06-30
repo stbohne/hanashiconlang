@@ -3,7 +3,13 @@
  */
 package org.hanashiconlang.ui.outline
 
+import org.eclipse.emf.ecore.EObject
+import org.eclipse.xtext.ui.editor.outline.IOutlineNode
 import org.eclipse.xtext.ui.editor.outline.impl.DefaultOutlineTreeProvider
+import org.hanashiconlang.hanashi.HanashiPackage
+import org.hanashiconlang.hanashi.HtmlData
+import org.hanashiconlang.hanashi.MetaData
+import org.hanashiconlang.hanashi.RichString
 
 /**
  * Customization of the default outline structure.
@@ -11,5 +17,21 @@ import org.eclipse.xtext.ui.editor.outline.impl.DefaultOutlineTreeProvider
  * See https://www.eclipse.org/Xtext/documentation/310_eclipse_support.html#outline
  */
 class HanashiOutlineTreeProvider extends DefaultOutlineTreeProvider {
+
+	protected override void _createChildren(IOutlineNode parentNode, EObject modelElement) {
+		for (EObject childElement : modelElement.eContents.filter[
+			!(it instanceof RichString || it instanceof MetaData || it instanceof HtmlData)
+		])
+			createNode(parentNode, childElement);
+	}
+
+	protected override boolean _isLeaf(EObject modelElement) {
+		!modelElement.eClass().getEAllContainments.exists[
+			modelElement.eIsSet(it) &&
+			it.EReferenceType != HanashiPackage.Literals.RICH_STRING &&
+			it.EReferenceType != HanashiPackage.Literals.META_DATA &&
+			it.EReferenceType != HanashiPackage.Literals.HTML_DATA
+		]
+	}
 
 }

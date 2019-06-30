@@ -29,6 +29,7 @@ import org.eclipse.xtext.util.Pair
 
 import static extension org.hanashiconlang.HanashiExtensions.*
 import java.util.HashMap
+import org.hanashiconlang.hanashi.Translated
 
 class HanashiRenderer {
 	var Language lang
@@ -75,7 +76,7 @@ class HanashiRenderer {
 		} else 
 			null
 	}
-	val multiNewlines = Pattern.compile("\\n\\r?(\\w*\\n\\r?)+")
+	val multiNewlines = Pattern.compile("\\r?\\n([ \\t]*\\r?\\n)+")
 	dispatch def generateRichStringExpression(RichStringLiteral l, boolean trimLeft, boolean trimRight) {
 		val v = l.value
 		val v2 = if (trimLeft) { 
@@ -99,9 +100,9 @@ class HanashiRenderer {
 			«FOR l: g.lines»
     		    <tr class="gloss-words">«generateGlossWordsText(l.words)»</tr>«
                 IF (l.words.exists[items.exists[it instanceof GlossMorpheme]])
-                »<tr class="gloss-info">«
-		    		generateGlossWordsInfo(l.words)
-	    		»</tr>«
+	                »<tr class="gloss-info">«
+			    		generateGlossWordsInfo(l.words)
+		    		»</tr>«
                 ENDIF»
 		    «ENDFOR»
 		</table>''', false)
@@ -131,14 +132,14 @@ class HanashiRenderer {
 		'''«IF c.header»<th«colspan»>«text»</th>«ELSE»<td«colspan»>«text»</td>«ENDIF»'''
 	}
 	dispatch def generateRichStringExpression(Footnote f, boolean trimLeft, boolean trimRight) {
-		val name = if (f.target != null) f.target.name else f.name
+		val name = if (f.target !== null) f.target.name else f.name
 		if (!footnoteHash.containsKey(name)) {
 			footnoteHash.put(name, Tuples.create(footnoteHumanCounter, footnoteGlobalCounter))
 			footnoteHumanCounter += 1
 			footnoteGlobalCounter += 1
 		}
 		val counters = footnoteHash.get(name)
-		if (f.target == null)
+		if (f.target === null)
 			postFuncs.add[
 				'''«it»<p id="#footnote-«counters.second»"><sup>«counters.first»</sup> «generateRichString(f.text, false)»</p>'''
 			]
@@ -151,6 +152,12 @@ class HanashiRenderer {
 		}
 		footnoteHumanCounter = 1
 		result
+	}
+	dispatch def generateRichStringExpression(Translated t, boolean trimLeft, boolean trimRight) { 
+		Tuples.create(
+			'''«FOR i: t.items.filter[it.language == this.lang]»«generateRichString(i.text, false)»«ENDFOR»''',
+			false
+		)
 	}
 	
 	def CharSequence richString2String(RichString s) {
@@ -178,6 +185,8 @@ class HanashiRenderer {
     dispatch def CharSequence richStringExpression2String(Footnote f) {
     	""
     }
+	dispatch def richStringExpression2String(Translated t)
+		'''«FOR i: t.items.filter[it.language == this.lang]»«richString2String(i.text)»«ENDFOR»'''
 	
 	def generateGlossWordsText(EList<GlossWord> gws) 
 		'''«FOR gw: gws»<td style="padding:0.1em" «

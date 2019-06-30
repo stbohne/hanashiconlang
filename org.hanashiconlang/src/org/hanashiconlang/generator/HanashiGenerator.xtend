@@ -3,38 +3,97 @@
  */
 package org.hanashiconlang.generator
 
+import com.google.inject.Inject
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.xtext.generator.AbstractGenerator
 import org.eclipse.xtext.generator.IFileSystemAccess2
 import org.eclipse.xtext.generator.IGeneratorContext
-import org.hanashiconlang.hanashi.Document
-import static extension org.hanashiconlang.HanashiExtensions.*
+import org.eclipse.xtext.scoping.IScopeProvider
+import org.hanashiconlang.hanashi.Article
+import org.hanashiconlang.hanashi.PartLexicon
+import org.hanashiconlang.hanashi.PartSection
+import org.hanashiconlang.hanashi.PartTaxonomy
 
 interface HanashiFunction {
+    def String validate(Iterable<CharSequence> text) { 
+    	null
+    }
     def CharSequence generate(Iterable<CharSequence> text)
     def CharSequence string(Iterable<CharSequence> text)
 }
 class HanashiFunctions {
     public static val p = new HanashiFunction {
+    	override validate(Iterable<CharSequence> text) {
+    		if (text.size != 1)
+    			"'p' requires exactly one argument"
+    		else
+    			null 
+    	}
         override generate(Iterable<CharSequence> text) 
             '''<p>«text.join(" ")»</p>'''
         override string(Iterable<CharSequence> text) {
             text.join(" ")
         }
     }
-    public static val br = new HanashiFunction {
+    public static val h = new HanashiFunction {
+    	override validate(Iterable<CharSequence> text) {
+    		if (text.size % 2 != 0)
+    			"'h' requires an even number of arguments"
+    		else
+    			null 
+    	}
+        override generate(Iterable<CharSequence> text) {
+        	val result = new StringBuilder
+        	val it = text.iterator
+        	while (it.hasNext) {
+        		val title = it.next
+        		val body = it.next
+        		result.append('''<b>«title»</b>
+        		                 «body»''')
+        	}	
+        	result
+        }            
+        override string(Iterable<CharSequence> text) {
+            text.join(" ")
+        }
+    }
+    public static val br = new HanashiFunction { 
+    	override validate(Iterable<CharSequence> text) {
+    		if (text.size != 0)
+    			"'br' does not take arguments"
+    		else
+    			null 
+    	}
         override generate(Iterable<CharSequence> text) '''<br/>'''
         override string(Iterable<CharSequence> text) ''''''
     }
     public static val bo = new HanashiFunction {
+    	override validate(Iterable<CharSequence> text) {
+    		if (text.size != 0)
+    			"'bo' does not take arguments"
+    		else
+    			null 
+    	}
         override generate(Iterable<CharSequence> text) { "{" }
         override string(Iterable<CharSequence> text) { "{" }
     }    
     public static val bc = new HanashiFunction {
+    	override validate(Iterable<CharSequence> text) {
+    		if (text.size != 0)
+    			"'bc' does not take arguments"
+    		else
+    			null 
+    	}
         override generate(Iterable<CharSequence> text) { "}" }
         override string(Iterable<CharSequence> text) { "}" }
     }    
     public static val nl = new HanashiFunction {
+    	override validate(Iterable<CharSequence> text) {
+    		if (text.size != 0)
+    			"'nl' does not take arguments"
+    		else
+    			null 
+    	}
         override generate(Iterable<CharSequence> text) { "\n" }
         override string(Iterable<CharSequence> text) { "\n" }
     }    
@@ -59,6 +118,12 @@ class HanashiFunctions {
         '''
     } 
     public static val em = new HanashiFunction {
+    	override validate(Iterable<CharSequence> text) {
+    		if (text.size != 1)
+    			"'br' requires exactly one argument"
+    		else
+    			null 
+    	}
         override generate(Iterable<CharSequence> text) '''
         	<em>«FOR i: text»«i»«ENDFOR»</em>
         '''
@@ -99,28 +164,35 @@ class HanashiGenerator extends AbstractGenerator {
 //	}
 	
 	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
-		val lang = (resource.contents.get(0) as Document).language
 		val baseName = resource.URI.trimFileExtension.lastSegment
-		val renderer = new HanashiRenderer(lang) 
-		fsa.generateFile(baseName + '.html', '''
-			<html>
-			<head>
-			<style>
-			a:link { text-decoration: none; }
-			a:hover { text-decoration: underline; }
-			table.gloss { border: 0; display: inline-table; }
-			.gloss-info { font-size:66%; line-height:20%; }
-			</style>
-			</head>
-			<body>
-			«FOR d: resource.contents.filter(Document)»
-				«FOR p: d.parts»
-				«renderer.generateDeclaration(p, 1)»
-				«ENDFOR»
-			«ENDFOR»
-			</body>
-			</html>
-		''')
+		for (article : resource.allContents.filter(Article).toIterable) 
+			for (lang : article.languages) {
+				val renderer = new HanashiRenderer(lang) 
+				fsa.generateFile(baseName + "." + article.name + '.' + lang.name + '.html', '''
+					<html>
+					<head>
+					<title>
+					«renderer.generateRichString(article.title, false)»
+					</title>
+					<style>
+					a:link { text-decoration: none; }
+					a:hover { text-decoration: underline; }
+					table.gloss { border: 0; display: inline-table; }
+					.gloss-info { font-size:66%; line-height:20%; }
+					</style>
+					</head>
+					<body>
+					«FOR p: article.parts»
+						«switch (p) {
+						PartSection: renderer.generateDeclaration(p.target, 1)
+						PartTaxonomy: renderer.generateDeclaration(p.target, 1)
+						PartLexicon: renderer.generateDeclaration(p.target, 1)
+						}»
+					«ENDFOR»
+					</body>
+					</html>
+				''')
+			}
 		
 	}
 

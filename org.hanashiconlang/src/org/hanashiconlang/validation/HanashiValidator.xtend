@@ -10,6 +10,7 @@ import org.eclipse.xtext.EcoreUtil2
 import org.hanashiconlang.hanashi.Document
 import static extension org.hanashiconlang.HanashiExtensions.*
 import org.hanashiconlang.generator.HanashiRenderer
+import org.hanashiconlang.generator.HanashiFunction
 
 /**
  * This class contains custom validation rules. 
@@ -33,10 +34,14 @@ class HanashiValidator extends AbstractHanashiValidator {
 	def checkCall(Call c) {
 		val renderer = new HanashiRenderer(EcoreUtil2.getContainerOfType(c, Document).language)
 		val func = c.function
-		try {
+		val field = try {
 			HanashiFunctions.getDeclaredField(renderer.generateRichString(func, false).toString)
 		} catch (NoSuchFieldException exc) {
 			error('''The function '«func»' does not exist''', c.function, null)
+			return
 		}
+		val error = (field.get(null) as HanashiFunction).validate(c.arguments.map[renderer.generateRichString(it, false)])
+		if (error !== null)
+			this.error(error, c, null)
 	}
 }

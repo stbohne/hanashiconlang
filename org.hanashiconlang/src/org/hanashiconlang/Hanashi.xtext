@@ -15,7 +15,8 @@ Language:
 ;
 	
 Declaration:
-	Section
+ 	Article
+|	Section
 |   Lexicon
 |	Taxon
 |	Language
@@ -64,7 +65,15 @@ RichStringPart hidden(WS, ML_COMMENT, SL_COMMENT):
 	=> "gl" Gloss
 |	=> "table" Table
 |	=> "fn" Footnote
+|	=> "translated" Translated
 |   {Call} function=RichStringOrName (arguments+=RichStringOrName)*
+;
+
+Translated:
+	{Translated} (items+=TranslatedItem)*
+;
+TranslatedItem:
+	language=[Language|Name] text=RichString
 ;
 
 Footnote:
@@ -99,15 +108,26 @@ GlossItem:
 ;
 GlossSkip: {GlossSkip} ">";
 
+Article:
+	"article" name=Name (languages+=[Language|Name])+ title=RichString meta=MetaData html=HtmlData ":"
+		(parts+=ArticlePart)*
+	"end"
+;
+ArticlePart:
+	{PartSection} "section" target=[Section|Name]
+|	{PartTaxonomy} "taxonomy" target=[Taxon|Name]
+|	{PartLexicon} "lexicon" target=[Lexicon|Name]
+;
+
 Section:
-	"section" (name=Name)? title=RichString (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
+	"section" name=Name title=RichString (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
 	text=RichString?
 	(parts+=Section)*
 	"end"
 ;
 
 Lexicon:
-	"lexicon" (name=Name)? language=[Language|Name] (taxons+=TaxonRef)* meta=MetaData html=HtmlData 
+	"lexicon" name=Name language=[Language|Name] (taxons+=TaxonRef)* meta=MetaData html=HtmlData 
 	("morphemerefclass" morphemerefclass=RichStringOrName)? ":"
 	(morphemes+=Morpheme)*
 	"end"
@@ -153,10 +173,10 @@ TaxonRef:
 	"#" target=[Taxon|Name]
 ;
 
-Name: ID | "syntax" | "taxon" | "form" | "gloss" | "translation" | "derived" | 
-      "morpheme" | "section" | "lexicon" | "morphemerefclass" | "gl" |
+Name: ID | "syntax" | "taxon" | "taxonomy" | "form" | "gloss" | "translation" | "translated" | "derived" | 
+      "morpheme" | "section" | "lexicon" | "morphemerefclass" | "gl" | "fn" |
       "author" | "created" | "modified" | "version" | "class" | "refclass" | 
-      "language" | "import";
+      "language" | "import" | "article";
 
 
 terminal fragment MLC_OTH      : !( '*' | '{' | '}' );
