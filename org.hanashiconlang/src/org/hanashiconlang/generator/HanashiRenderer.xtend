@@ -184,12 +184,15 @@ class HanashiRenderer {
 	}
 	dispatch def generateRichStringExpression(Footnote f, boolean trimLeft, boolean trimRight) {
 		val name = if (f.target !== null) f.target.name else f.name
-		if (!footnoteHash.containsKey(name)) {
-			footnoteHash.put(name, Tuples.create(footnoteHumanCounter, footnoteGlobalCounter))
-			footnoteHumanCounter += 1
-			footnoteGlobalCounter += 1
-		}
-		val counters = footnoteHash.get(name)
+		val counters = if (name === null || !footnoteHash.containsKey(name)) {
+				val counters = Tuples.create(footnoteHumanCounter, footnoteGlobalCounter)
+				if (name !== null)
+					footnoteHash.put(name, counters)
+				footnoteHumanCounter += 1
+				footnoteGlobalCounter += 1
+				counters
+			} else 
+				footnoteHash.get(name)
 		if (f.target === null)
 			postFuncs.add[
 				'''«it»<p id="#footnote-«counters.second»"><sup>«counters.first»</sup> «generateRichString(f.text, false)»</p>'''
