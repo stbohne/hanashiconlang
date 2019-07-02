@@ -13,6 +13,9 @@ import org.hanashiconlang.hanashi.Article
 import org.hanashiconlang.hanashi.PartLexicon
 import org.hanashiconlang.hanashi.PartSection
 import org.hanashiconlang.hanashi.PartTaxonomy
+import org.hanashiconlang.hanashi.PartTOC
+import org.eclipse.xtext.util.Tuples
+import org.eclipse.xtext.util.Pair
 
 interface HanashiFunction {
     def String validate(Iterable<CharSequence> text) { 
@@ -21,116 +24,153 @@ interface HanashiFunction {
     def CharSequence generate(Iterable<CharSequence> text)
     def CharSequence string(Iterable<CharSequence> text)
 }
+abstract class NoArgumentFunction implements HanashiFunction {
+    val String name
+    new(String name) {
+        this.name = name
+    }
+    override validate(Iterable<CharSequence> text) {
+        if (text.size != 0)
+            "'" + name + "' takes no arguments"
+        else
+            null 
+    }
+    override generate(Iterable<CharSequence> text) {
+        doGenerate()
+    }
+    override string(Iterable<CharSequence> text) {
+        doString()
+    }
+    abstract def CharSequence doGenerate()
+    abstract def CharSequence doString()
+}
+abstract class OneArgumentFunction implements HanashiFunction {
+    val String name
+    new(String name) {
+        this.name = name
+    }
+    override validate(Iterable<CharSequence> text) {
+        if (text.size != 1)
+            "'" + name + "' requires exactly one argument"
+        else
+            null 
+    }
+    override generate(Iterable<CharSequence> text) {
+        doGenerate(text.head)
+    }
+    override string(Iterable<CharSequence> text) {
+        doString(text.head)
+    }
+    abstract def CharSequence doGenerate(CharSequence text)
+    abstract def CharSequence doString(CharSequence text)
+}
+class SurroundFunction extends OneArgumentFunction {
+    val String before
+    val String after
+    new(String name, String before, String after) {
+        super(name)
+        this.before = before
+        this.after = after
+    }
+    override doGenerate(CharSequence text) 
+        '''Â«beforeÂ»Â«textÂ»Â«afterÂ»'''
+    override doString(CharSequence text) {
+        '''Â«beforeÂ»Â«textÂ»Â«afterÂ»'''
+    }
+}
+class SurroundMarkupFunction extends SurroundFunction {
+    new(String name, String before, String after) {
+        super(name, before, after)
+    }
+    override doString(CharSequence text) {
+        '''Â«textÂ»'''
+    }
+}
+abstract class PairArgumentsFunction implements HanashiFunction {
+    val String name
+    new(String name) {
+        this.name = name
+    }
+    override validate(Iterable<CharSequence> text) {
+        if (text.size % 2 != 0)
+            "'" + name + "' requires an even number of arguments"
+        else
+            null  
+    }
+    override generate(Iterable<CharSequence> text) {
+        val pairs = <Pair<CharSequence, CharSequence>>newArrayOfSize(text.size / 2)
+        val it = text.iterator
+        var i = 0
+        while (it.hasNext) {
+            pairs.set(i, Tuples.create(it.next, it.next))
+            i += 1
+        }
+        doGenerate(pairs.toList)
+    }
+    override string(Iterable<CharSequence> text) {
+        val pairs = <Pair<CharSequence, CharSequence>>newArrayOfSize(text.size / 2)
+        val it = text.iterator
+        var i = 0
+        while (it.hasNext) {
+            pairs.set(i, Tuples.create(it.next, it.next))
+            i += 1
+        }
+        doString(pairs)
+    }
+    abstract def CharSequence doGenerate(Iterable<Pair<CharSequence, CharSequence>> text)
+    abstract def CharSequence doString(Iterable<Pair<CharSequence, CharSequence>> text)
+}
 class HanashiFunctions {
-    public static val p = new HanashiFunction {
-    	override validate(Iterable<CharSequence> text) {
-    		if (text.size != 1)
-    			"'p' requires exactly one argument"
-    		else
-    			null 
-    	}
-        override generate(Iterable<CharSequence> text) 
-            '''<p>«text.join(" ")»</p>'''
-        override string(Iterable<CharSequence> text) {
-            text.join(" ")
+    public static val p = new SurroundMarkupFunction("p", "<p>", "</p>")
+    public static val h = new PairArgumentsFunction("h") {
+        override doGenerate(Iterable<Pair<CharSequence, CharSequence>> text) 
+            '''Â«FOR tb: textÂ»<b>Â«tb.firstÂ»</b>
+            Â«tb.secondÂ»
+            Â«ENDFORÂ»'''    
+        override doString(Iterable<Pair<CharSequence, CharSequence>> text) {
+            '''Â«FOR tb: text SEPARATOR " "Â»Â«tb.firstÂ» Â«tb.secondÂ»Â«ENDFORÂ»'''
         }
     }
-    public static val h = new HanashiFunction {
-    	override validate(Iterable<CharSequence> text) {
-    		if (text.size % 2 != 0)
-    			"'h' requires an even number of arguments"
-    		else
-    			null 
-    	}
-        override generate(Iterable<CharSequence> text) {
-        	val result = new StringBuilder
-        	val it = text.iterator
-        	while (it.hasNext) {
-        		val title = it.next
-        		val body = it.next
-        		result.append('''<b>«title»</b>
-        		                 «body»''')
-        	}	
-        	result
-        }            
-        override string(Iterable<CharSequence> text) {
-            text.join(" ")
-        }
+    public static val br = new NoArgumentFunction("br") { 
+        override doGenerate() '''<br/>'''
+        override doString() ''''''
     }
-    public static val br = new HanashiFunction { 
-    	override validate(Iterable<CharSequence> text) {
-    		if (text.size != 0)
-    			"'br' does not take arguments"
-    		else
-    			null 
-    	}
-        override generate(Iterable<CharSequence> text) '''<br/>'''
-        override string(Iterable<CharSequence> text) ''''''
-    }
-    public static val bo = new HanashiFunction {
-    	override validate(Iterable<CharSequence> text) {
-    		if (text.size != 0)
-    			"'bo' does not take arguments"
-    		else
-    			null 
-    	}
-        override generate(Iterable<CharSequence> text) { "{" }
-        override string(Iterable<CharSequence> text) { "{" }
+    public static val bo = new NoArgumentFunction("bo") {
+        override doGenerate() { "{" }
+        override doString() { "{" }
     }    
-    public static val bc = new HanashiFunction {
-    	override validate(Iterable<CharSequence> text) {
-    		if (text.size != 0)
-    			"'bc' does not take arguments"
-    		else
-    			null 
-    	}
-        override generate(Iterable<CharSequence> text) { "}" }
-        override string(Iterable<CharSequence> text) { "}" }
+    public static val bc = new NoArgumentFunction("bc") {
+        override doGenerate() { "}" }
+        override doString() { "}" }
     }    
-    public static val nl = new HanashiFunction {
-    	override validate(Iterable<CharSequence> text) {
-    		if (text.size != 0)
-    			"'nl' does not take arguments"
-    		else
-    			null 
-    	}
-        override generate(Iterable<CharSequence> text) { "\n" }
-        override string(Iterable<CharSequence> text) { "\n" }
+    public static val nl = new NoArgumentFunction("nl") {
+        override doGenerate() { "\n" }
+        override doString() { "\n" }
     }    
-    public static val tab = new HanashiFunction {
-        override generate(Iterable<CharSequence> text) { "\t" }
-        override string(Iterable<CharSequence> text) { "\t" }
+    public static val tab = new NoArgumentFunction("tab") {
+        override doGenerate() { "\t" }
+        override doString() { "\t" }
     }   
     public static val ul = new HanashiFunction {
         override generate(Iterable<CharSequence> text) '''
-        	<ul>«FOR i: text»<li>«i»</li>«ENDFOR»</ul>
+        	<ul>Â«FOR i: textÂ»<li>Â«iÂ»</li>Â«ENDFORÂ»</ul>
         '''
         override string(Iterable<CharSequence> text) '''
-        	«FOR i: text SEPARATOR "\n"»«i»«ENDFOR»
+        	Â«FOR i: text SEPARATOR "\n"Â»Â«iÂ»Â«ENDFORÂ»
         '''
     } 
     public static val ol = new HanashiFunction {
         override generate(Iterable<CharSequence> text) '''
-        	<ol>«FOR i: text»<li>«i»</li>«ENDFOR»</ol>
+        	<ol>Â«FOR i: textÂ»<li>Â«iÂ»</li>Â«ENDFORÂ»</ol>
         '''
         override string(Iterable<CharSequence> text) '''
-        	«FOR i: text SEPARATOR "\n"»«i»«ENDFOR»
+        	Â«FOR i: text SEPARATOR "\n"Â»Â«iÂ»Â«ENDFORÂ»
         '''
     } 
-    public static val em = new HanashiFunction {
-    	override validate(Iterable<CharSequence> text) {
-    		if (text.size != 1)
-    			"'br' requires exactly one argument"
-    		else
-    			null 
-    	}
-        override generate(Iterable<CharSequence> text) '''
-        	<em>«FOR i: text»«i»«ENDFOR»</em>
-        '''
-        override string(Iterable<CharSequence> text) '''
-        	«FOR i: text»«i»«ENDFOR»
-        '''
-    } 
+    public static val em = new SurroundMarkupFunction("em", "<em>", "</em>")
+    public static val pt = new SurroundFunction("pt", "[", "]")
+    public static val pm = new SurroundFunction("pm", "/", "/")
+    public static val gm = new SurroundFunction("gm", "âŸ¨", "âŸ©")
 }
 
 /**
@@ -172,7 +212,7 @@ class HanashiGenerator extends AbstractGenerator {
 					<html>
 					<head>
 					<title>
-					«renderer.generateRichString(article.title, false)»
+					Â«renderer.generateRichString(article.title, false)Â»
 					</title>
 					<style>
 					a:link { text-decoration: none; }
@@ -182,13 +222,12 @@ class HanashiGenerator extends AbstractGenerator {
 					</style>
 					</head>
 					<body>
-					«FOR p: article.parts»
-						«switch (p) {
-						PartSection: renderer.generateDeclaration(p.target, 1)
-						PartTaxonomy: renderer.generateDeclaration(p.target, 1)
-						PartLexicon: renderer.generateDeclaration(p.target, 1)
-						}»
-					«ENDFOR»
+					Â«FOR p: article.partsÂ»
+ 					    Â«renderer.generatePart(p, 1)Â»
+					Â«ENDFORÂ»
+                    Â«FOR p: article.appendix BEFORE "<h1>Appendix</h1>"Â»
+                        Â«renderer.generatePart(p, 2)Â»
+                    Â«ENDFORÂ»
 					</body>
 					</html>
 				''')

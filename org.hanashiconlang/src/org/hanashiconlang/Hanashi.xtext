@@ -109,31 +109,33 @@ GlossItem:
 GlossSkip: {GlossSkip} ">";
 
 Article:
-	"article" name=Name (languages+=[Language|Name])+ title=RichString meta=MetaData html=HtmlData ":"
+	"article" (name=Name title=RichString? | title=RichString) (languages+=[Language|Name])+ meta=MetaData html=HtmlData ":"
 		(parts+=ArticlePart)*
+		("appendix" (appendix+=ArticlePart)*)?
 	"end"
 ;
 ArticlePart:
 	{PartSection} "section" target=[Section|Name]
 |	{PartTaxonomy} "taxonomy" target=[Taxon|Name]
 |	{PartLexicon} "lexicon" target=[Lexicon|Name]
+|   {PartTOC} "toc"
 ;
 
 Section:
-	"section" name=Name title=RichString (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
+	"section" (name=Name title=RichString? | title=RichString) (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
 	text=RichString?
 	(parts+=Section)*
 	"end"
 ;
 
 Lexicon:
-	"lexicon" name=Name language=[Language|Name] (taxons+=TaxonRef)* meta=MetaData html=HtmlData 
+	"lexicon" (name=Name title=RichString? | title=RichString) language=[Language|Name] (taxons+=TaxonRef)* meta=MetaData html=HtmlData 
 	("morphemerefclass" morphemerefclass=RichStringOrName)? ":"
 	(morphemes+=Morpheme)*
 	"end"
 ;
 Morpheme:
-	"morpheme" name=Name (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
+	"morpheme" (name=Name title=RichString? | title=RichString) (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":"
 	(entries+=MorphemeEntry)*
 ;
 MorphemeEntry:
@@ -143,7 +145,7 @@ MorphemeEntry:
 ;
 
 Syntax: {Syntax}
-	"syntax" (name=Name)? language=[Language|Name] (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":" (rules+=Rule)* "end"
+	"syntax" (name=Name title=RichString? | title=RichString) language=[Language|Name] (taxons+=TaxonRef)* meta=MetaData html=HtmlData ":" (rules+=Rule)* "end"
 ;
 Rule:
 	name=Name html=HtmlData "=" production=Production ";"

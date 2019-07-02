@@ -30,6 +30,12 @@ import org.eclipse.xtext.util.Pair
 import static extension org.hanashiconlang.HanashiExtensions.*
 import java.util.HashMap
 import org.hanashiconlang.hanashi.Translated
+import org.hanashiconlang.hanashi.PartSection
+import org.hanashiconlang.hanashi.PartLexicon
+import org.hanashiconlang.hanashi.PartTaxonomy
+import org.hanashiconlang.hanashi.Document
+import org.hanashiconlang.hanashi.PartTOC
+import org.hanashiconlang.hanashi.Article
 
 class HanashiRenderer {
 	var Language lang
@@ -62,6 +68,51 @@ class HanashiRenderer {
 			type == "translation" && language == lang
 		]?.text) ?: ""
 	}
+	
+	def CharSequence title(Section s) {
+	    if (s.title !== null) generateRichString(s.title, false)
+	    else s.name
+	}
+    def CharSequence title(Taxon s) {
+        if (s.title !== null) generateRichString(s.title, false)
+        else "Taxonomy " + s.name
+    }
+    def CharSequence title(Lexicon s) {
+        if (s.title !== null) generateRichString(s.title, false)
+        else "Lexicon " + s.name
+    }
+    def CharSequence title(Morpheme s) {
+        if (s.title !== null) generateRichString(s.title, false)
+        else s.name
+    }
+    def CharSequence title(Syntax s) {
+        if (s.title !== null) generateRichString(s.title, false)
+        else s.name
+    }
+    def dispatch hasName(Section s) {
+        s.name !== null
+    }
+    def dispatch hasName(Taxon t) {
+        t.name !== null
+    }
+    def dispatch hasName(Lexicon l) {
+        l.name !== null
+    }
+    def dispatch hasName(Morpheme m) {
+        m.name !== null
+    }
+    def dispatch hasName(Syntax s) {
+        s.name !== null
+    }
+    def dispatch hasName(PartSection s) {
+        s.target.name !== null
+    }
+    def dispatch hasName(PartTaxonomy t) {
+        t.target.name !== null
+    }
+    def dispatch hasName(PartLexicon l) {
+        l.target.name !== null
+    }
 
 	def CharSequence generateRichString(RichString s, boolean requirePara) {
 		if (s !== null) {
@@ -238,9 +289,67 @@ class HanashiRenderer {
 		''
 	}
 	
+	dispatch def CharSequence generatePart(PartSection p, int depth) {
+	    generateDeclaration(p.target, depth)
+	}
+    dispatch def CharSequence generatePart(PartLexicon p, int depth) {
+        generateDeclaration(p.target, depth)
+    }
+    dispatch def CharSequence generatePart(PartTaxonomy p, int depth) {
+        generateDeclaration(p.target, depth)
+    }
+    dispatch def CharSequence generatePart(PartTOC p, int depth) {
+        val article = EcoreUtil2.getContainerOfType(p, Article)
+        var number = 0
+        '''
+        <h«depth»>Table of Contents</h«depth»>
+        «FOR e: article.parts.filter[!(it instanceof PartTOC) && hasName(it)] SEPARATOR "<br/>"»
+            «switch e {
+                PartSection: generateTOCEntry(e.target, #[number += 1], false)
+                PartTaxonomy: generateTOCEntry(e.target, #[number += 1], false)
+                PartLexicon: generateTOCEntry(e.target, #[number += 1], false)
+            }»
+        «ENDFOR»
+        «IF !article.appendix.nullOrEmpty»
+        «if (number > 0) { number = 0; '</br>' } else ''»Appendix<br/>
+        «FOR e: article.appendix.filter[!(it instanceof PartTOC) && hasName(it)] SEPARATOR "<br/>"»
+            «switch e {
+                PartSection: generateTOCEntry(e.target, #[number += 1], true)
+                PartTaxonomy: generateTOCEntry(e.target, #[number += 1], true)
+                PartLexicon: generateTOCEntry(e.target, #[number += 1], true)
+            }»
+        «ENDFOR»
+        «ENDIF»
+        '''
+    }
+    def tocNumber(Iterable<Integer> number, boolean appendix) {
+        if (number.nullOrEmpty) return ""
+        '''«if (appendix) 'A' + number.head else number.head »«FOR n: number.tail».«n»«ENDFOR»«IF number.size == 1».«ENDIF»'''
+    }
+    dispatch def CharSequence generateTOCEntry(
+        Section s, Iterable<Integer> number, boolean appendix) {
+        '''
+        <a href="#section$«s.name»">«tocNumber(number, appendix)» «title(s)»</a>
+        «FOR p: s.parts.filter[hasName(it)].indexed»<br/>
+        «generateTOCEntry(p.value, number + #[p.key + 1], appendix)»«ENDFOR»
+        '''   
+    }
+    dispatch def CharSequence generateTOCEntry(
+        Taxon t, Iterable<Integer> number, boolean appendix) {
+        '''
+        <a href="#taxon$«t.name»">«tocNumber(number, appendix)» «title(t)»</a>
+        '''   
+    }
+    dispatch def CharSequence generateTOCEntry(
+        Lexicon l, Iterable<Integer> number, boolean appendix) {
+        '''
+        <a href="#lexicon$«l.name»">«tocNumber(number, appendix)» «title(l)»</a>
+        '''   
+    }
+	
 	dispatch def CharSequence generateDeclaration(Section s, int depth) {
 		val classes = #["section"] + (richString2String(s.html.class_)?.toString?.split(" ") ?: newArrayOfSize(0))
-		'''<h«depth» id="section$«s.name»" class="«classes.join(" ")»">«generateRichString(s.title, false)»</h1>
+		'''<h«depth» id="section$«s.name»" class="«classes.join(" ")»">«title(s)»</h1>
 		«generatePostFuncs(generateRichString(s.text, true))»
 		«FOR p: s.parts»
 		«generateDeclaration(p, depth + 1)»
@@ -248,14 +357,14 @@ class HanashiRenderer {
 	}
 	dispatch def generateDeclaration(Lexicon l, int depth) {
 		val classes = #["lexicon"] + (richString2String(l.html.class_)?.toString?.split(" ") ?: newArrayOfSize(0))
-        '''<h«depth»«IF !l.name.nullOrEmpty» id="lexicon$«l.name»"«ENDIF» class="«classes.join(" ")»">Lexicon for «generateRichString(l.language.title, false)»</h1>
+        '''<h«depth»«IF !l.name.nullOrEmpty» id="lexicon$«l.name»"«ENDIF» class="«classes.join(" ")»">«title(l)»</h1>
         «FOR m: l.morphemes»
         «generatePostFuncs(generateMorpheme(m, depth + 1))»
         «ENDFOR»'''
 	}
 	dispatch def generateDeclaration(Taxon t, int depth) {
         val classes = #["taxonomy"] + (richString2String(t.html.class_)?.toString?.split(" ") ?: newArrayOfSize(0))
-        '''<h«depth»«IF !t.name.nullOrEmpty» id="taxonomy$«t.name»"«ENDIF» class="«classes.join(" ")»">Taxonomy</h1>
+        '''<h«depth»«IF !t.name.nullOrEmpty» id="taxonomy$«t.name»"«ENDIF» class="«classes.join(" ")»">«title(t)»</h1>
         «generateTaxon(t, depth + 1)»'''
 	}
 	dispatch def generateDeclaration(Syntax s, int depth) {
