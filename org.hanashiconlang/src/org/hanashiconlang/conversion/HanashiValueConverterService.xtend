@@ -1,12 +1,12 @@
 package org.hanashiconlang.conversion
 
 import org.eclipse.xtext.AbstractRule
+import org.eclipse.xtext.common.services.DefaultTerminalConverters
 import org.eclipse.xtext.conversion.ValueConverter
 import org.eclipse.xtext.conversion.impl.STRINGValueConverter
 import org.eclipse.xtext.nodemodel.INode
-import org.eclipse.xtext.xbase.conversion.XbaseValueConverterService
 
-class HanashiValueConverterService extends XbaseValueConverterService {
+class HanashiValueConverterService extends DefaultTerminalConverters {
     
     val richTextConverter = new STRINGValueConverter {
         var AbstractRule rule

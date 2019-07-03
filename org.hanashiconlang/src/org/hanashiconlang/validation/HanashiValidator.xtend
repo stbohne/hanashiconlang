@@ -11,15 +11,18 @@ import org.hanashiconlang.hanashi.Document
 import static extension org.hanashiconlang.HanashiExtensions.*
 import org.hanashiconlang.generator.HanashiRenderer
 import org.hanashiconlang.generator.HanashiFunction
+import org.hanashiconlang.hanashi.HanashiPackage
+import org.hanashiconlang.generator.IHanashiFunctionValidationMessageAcceptor
 
 /**
  * This class contains custom validation rules. 
  *
  * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#validation
  */
-class HanashiValidator extends AbstractHanashiValidator {
+class HanashiValidator extends AbstractHanashiValidator
+    implements IHanashiFunctionValidationMessageAcceptor {
 	
-//	public static val INVALID_NAME = 'invalidName'
+	public static val FUNCTION_DOES_NOT_EXIST = 'functionDoesNotExist'
 //
 //	@Check
 //	def checkGreetingStartsWithCapital(Greeting greeting) {
@@ -37,11 +40,29 @@ class HanashiValidator extends AbstractHanashiValidator {
 		val field = try {
 			HanashiFunctions.getDeclaredField(renderer.generateRichString(func, false).toString)
 		} catch (NoSuchFieldException exc) {
-			error('''The function '«func»' does not exist''', c.function, null)
+			error('''The function '«func»' does not exist''', 
+			      HanashiPackage.Literals.CALL__FUNCTION,
+			      FUNCTION_DOES_NOT_EXIST)
 			return
 		}
-		val error = (field.get(null) as HanashiFunction).validate(c.arguments.map[renderer.generateRichString(it, false)])
-		if (error !== null)
-			this.error(error, c, null)
+		(field.get(null) as HanashiFunction).validate(
+		    c.arguments, renderer, this
+		)
 	}
+
+    override error(String message, int index, String code, String... issueData) {
+        super.error(message, HanashiPackage.Literals.CALL__ARGUMENTS, 
+            index, code, issueData)
+    }
+    
+    override info(String message, int index, String code, String... issueData) {
+        super.info(message, HanashiPackage.Literals.CALL__ARGUMENTS, 
+            index, code, issueData)
+    }
+    
+    override warning(String message, int index, String code, String... issueData) {
+        super.warning(message, HanashiPackage.Literals.CALL__ARGUMENTS, 
+            index, code, issueData)
+    }
+
 }

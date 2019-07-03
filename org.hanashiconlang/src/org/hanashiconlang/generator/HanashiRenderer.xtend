@@ -1,11 +1,14 @@
 package org.hanashiconlang.generator
 
 import java.util.ArrayList
+import java.util.HashMap
 import java.util.function.Function
 import java.util.regex.Pattern
 import org.eclipse.emf.common.util.EList
 import org.eclipse.xtext.EcoreUtil2
+import org.eclipse.xtext.util.Pair
 import org.eclipse.xtext.util.Tuples
+import org.hanashiconlang.hanashi.Article
 import org.hanashiconlang.hanashi.Call
 import org.hanashiconlang.hanashi.Footnote
 import org.hanashiconlang.hanashi.Gloss
@@ -17,6 +20,10 @@ import org.hanashiconlang.hanashi.GlossWord
 import org.hanashiconlang.hanashi.Language
 import org.hanashiconlang.hanashi.Lexicon
 import org.hanashiconlang.hanashi.Morpheme
+import org.hanashiconlang.hanashi.PartLexicon
+import org.hanashiconlang.hanashi.PartSection
+import org.hanashiconlang.hanashi.PartTOC
+import org.hanashiconlang.hanashi.PartTaxonomy
 import org.hanashiconlang.hanashi.RichString
 import org.hanashiconlang.hanashi.RichStringLiteral
 import org.hanashiconlang.hanashi.Section
@@ -25,17 +32,9 @@ import org.hanashiconlang.hanashi.Table
 import org.hanashiconlang.hanashi.TableCol
 import org.hanashiconlang.hanashi.TableRow
 import org.hanashiconlang.hanashi.Taxon
-import org.eclipse.xtext.util.Pair
+import org.hanashiconlang.hanashi.Translated
 
 import static extension org.hanashiconlang.HanashiExtensions.*
-import java.util.HashMap
-import org.hanashiconlang.hanashi.Translated
-import org.hanashiconlang.hanashi.PartSection
-import org.hanashiconlang.hanashi.PartLexicon
-import org.hanashiconlang.hanashi.PartTaxonomy
-import org.hanashiconlang.hanashi.Document
-import org.hanashiconlang.hanashi.PartTOC
-import org.hanashiconlang.hanashi.Article
 
 class HanashiRenderer {
 	var Language lang
@@ -162,7 +161,7 @@ class HanashiRenderer {
 	    val func = richString2String(c.function).toString
 	    val field = HanashiFunctions.getDeclaredField(func)
 	    Tuples.create((field.get(null) as HanashiFunction).generate(
-	        c.arguments.map[generateRichString(it, false)]
+	        c.arguments, this
 	    ), false)
 	}
 	dispatch def generateRichStringExpression(Table t, boolean trimLeft, boolean trimRight) {
@@ -230,7 +229,7 @@ class HanashiRenderer {
         val func = richString2String(c.function).toString
         val field = HanashiFunctions.getDeclaredField(func)
         (field.get(null) as HanashiFunction).string(
-            c.arguments.map[richStringExpression2String(it)]
+            c.arguments, this
         )
     }
     dispatch def CharSequence richStringExpression2String(Table t) {
@@ -242,15 +241,18 @@ class HanashiRenderer {
 	dispatch def richStringExpression2String(Translated t)
 		'''«FOR i: t.items.filter[it.language == this.lang]»«richString2String(i.text)»«ENDFOR»'''
 	
-	def generateGlossWordsText(EList<GlossWord> gws) 
-		'''«FOR gw: gws»<td style="padding:0.1em" «
-		  IF gw.skips.size > 0»colspan="«gw.skips.size + 1»"«ENDIF»>«
-		  FOR gi: gw.items.indexed»«
+	def generateGlossWordsText(EList<GlossWord> gws) {
+	    val pure = !gws.exists[it.items.exists[it instanceof GlossMorpheme]] 
+		'''«FOR gw: gws.indexed»<td style="padding:0.1em" «
+		  IF gw.value.skips.size > 0»colspan="«gw.value.skips.size + 1»"«ENDIF»>«
+		  IF pure && gw.key == 0»“«ENDIF»«
+		  FOR gi: gw.value.items.indexed»«
 		      IF gi.key > 0 && gi.value instanceof GlossMorpheme && 
-		              gw.items.get(gi.key - 1) instanceof GlossMorpheme»«ENDIF»«
+		              gw.value.items.get(gi.key - 1) instanceof GlossMorpheme»«ENDIF»«
               generateGlossText(gi.value)»«
           ENDFOR
-		  »</td>«ENDFOR»'''
+		  »«IF pure && gw.key == gws.size - 1»”«ENDIF»</td>«ENDFOR»'''
+    }
 	dispatch def generateGlossText(GlossMorpheme gl) { 
 		val classes = #["morpheme-ref"] + 
 		    (richString2String(gl.morpheme.html.refclass)?.toString?.split(" ") ?: newArrayOfSize(0)) + 
