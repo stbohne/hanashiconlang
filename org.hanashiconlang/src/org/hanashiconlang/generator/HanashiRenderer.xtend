@@ -145,17 +145,26 @@ class HanashiRenderer {
 	}
 	dispatch def generateRichStringExpression(Gloss g, boolean trimLeft, boolean trimRight) { 
 		val classes = #["gloss"] + (richString2String(g.html.class_)?.toString?.split(" ") ?: newArrayOfSize(0))
-		Tuples.create('''
-		<table class="«classes.join(" ")»">
+		val numCols = g.lines.map[words.size].max
+		val gloss = if (g.lines.size == 1) {
+			val l = g.lines.get(0)
+			'''<ruby class="«classes.join(" ")»">«
+				generateGlossWordsText(l.words, numCols, true)»«
+				if (l.words.exists[items.exists[it instanceof GlossMorpheme]])
+					generateGlossWordsInfo(l.words, numCols, true)
+			»</ruby>'''
+		} else '''
+			<table class="«classes.join(" ")»">
 			«FOR l: g.lines»
-    		    <tr class="gloss-words">«generateGlossWordsText(l.words)»</tr>«
+    		    <tr class="gloss-words">«generateGlossWordsText(l.words, numCols, false)»</tr>«
                 IF (l.words.exists[items.exists[it instanceof GlossMorpheme]])
 	                »<tr class="gloss-info">«
-			    		generateGlossWordsInfo(l.words)
+			    		generateGlossWordsInfo(l.words, numCols, false)
 		    		»</tr>«
                 ENDIF»
 		    «ENDFOR»
-		</table>''', false)
+			</table>'''
+		Tuples.create(gloss, false)
 	}
 	dispatch def generateRichStringExpression(Call c, boolean trimLeft, boolean trimRight) {
 	    val func = richString2String(c.function).toString
@@ -241,17 +250,21 @@ class HanashiRenderer {
 	dispatch def richStringExpression2String(Translated t)
 		'''«FOR i: t.items.filter[it.language == this.lang]»«richString2String(i.text)»«ENDFOR»'''
 	
-	def generateGlossWordsText(EList<GlossWord> gws) {
-	    val pure = !gws.exists[it.items.exists[it instanceof GlossMorpheme]] 
-		'''«FOR gw: gws.indexed»<td style="padding:0.1em" «
-		  IF gw.value.skips.size > 0»colspan="«gw.value.skips.size + 1»"«ENDIF»>«
+	def generateGlossWordsText(EList<GlossWord> gws, int numCols, boolean ruby) {
+	    val pure = !gws.exists[it.items.exists[it instanceof GlossMorpheme]]
+	    var col = 0 
+		'''«FOR gw: gws.indexed SEPARATOR if (ruby) "<rb> </rb>"»«
+		  IF ruby»<rb>«ELSE»<td style="padding:0.1em" «
+			  IF gw.key == gws.size - 1 && col != numCols - 1»colspan="«numCols-col»"«
+			  ELSEIF gw.value.skips.size > 0»colspan="«gw.value.skips.size + 1»"«ENDIF»>«ENDIF»«
 		  IF pure && gw.key == 0»“«ENDIF»«
 		  FOR gi: gw.value.items.indexed»«
 		      IF gi.key > 0 && gi.value instanceof GlossMorpheme && 
 		              gw.value.items.get(gi.key - 1) instanceof GlossMorpheme»«ENDIF»«
               generateGlossText(gi.value)»«
           ENDFOR
-		  »«IF pure && gw.key == gws.size - 1»”«ENDIF»</td>«ENDFOR»'''
+          »«{col += gw.value.skips.size + 1; null}
+          »«IF pure && gw.key == gws.size - 1»”«ENDIF»«IF ruby»</rb>«ELSE»</td>«ENDIF»«ENDFOR»'''
     }
 	dispatch def generateGlossText(GlossMorpheme gl) { 
 		val classes = #["morpheme-ref"] + 
@@ -265,12 +278,20 @@ class HanashiRenderer {
 	dispatch def generateGlossText(GlossRichString gs) {
 		generateRichString(gs.string, false)
 	} 
-	def generateGlossWordsInfo(EList<GlossWord> gws) 
-		'''«FOR gw: gws»<td>«FOR gi: gw.items.indexed»«
+	def generateGlossWordsInfo(EList<GlossWord> gws, int numCols, boolean ruby) {
+		var col = 0 
+		'''«IF ruby»<rtc class="gloss-info">«ENDIF»«
+		FOR gw: gws.indexed SEPARATOR if (ruby) "<rt></rt>"»«IF ruby»<rt>«ELSE»<td«
+		    IF gw.key == gws.size - 1 && col != numCols - 1» colspan="«numCols-col»"«
+		    ELSEIF gw.value.skips.size > 0» colspan="«gw.value.skips.size + 1»"«ENDIF»>«ENDIF»«
+	    	FOR gi: gw.value.items.indexed»«
                 IF gi.key > 0 && gi.value instanceof GlossMorpheme && 
-                        gw.items.get(gi.key - 1) instanceof GlossMorpheme».«ENDIF»«
-                generateGlossInfo(gi.value)»«ENDFOR»</td>«
-        ENDFOR»'''
+                        gw.value.items.get(gi.key - 1) instanceof GlossMorpheme».«ENDIF»«
+                generateGlossInfo(gi.value)»«ENDFOR»«IF ruby»</rt>«ELSE»</td>«ENDIF»«
+        	{col += gw.value.skips.size + 1; null}»«
+        ENDFOR»«
+        IF ruby»</rtc>«ENDIF»'''
+    }
 	dispatch def generateGlossInfo(GlossMorpheme gl) 
 		'''«gl.morpheme.glossString»'''
 	dispatch def generateGlossInfo(GlossString gs) {
@@ -354,11 +375,15 @@ class HanashiRenderer {
 	
 	dispatch def CharSequence generateDeclaration(Section s, int depth) {
 		val classes = #["section"] + (richString2String(s.html.class_)?.toString?.split(" ") ?: newArrayOfSize(0))
-		'''<h«depth» id="section$«s.name»" class="«classes.join(" ")»">«title(s)»</h1>
+		'''
+		<section  id="section$«s.name»" class="«classes.join(" ")»>
+		<h«depth»">«title(s)»</h«depth»>
 		«generatePostFuncs(generateRichString(s.text, true))»
 		«FOR p: s.parts»
 		«generateDeclaration(p, depth + 1)»
-		«ENDFOR»'''
+		«ENDFOR»
+		</section>
+		'''
 	}
 	dispatch def generateDeclaration(Lexicon l, int depth) {
 		val classes = #["lexicon"] + (richString2String(l.html.class_)?.toString?.split(" ") ?: newArrayOfSize(0))

@@ -53,8 +53,10 @@ class HanashiGenerator extends AbstractGenerator {
 					<style>
 					a:link { text-decoration: none; }
 					a:hover { text-decoration: underline; }
-					table.gloss { border: 0; display: inline-table; }
+					table.gloss { border: 0; display: inline-table; margin-left: 1em; margin-right: 1em; padding: 0; }
 					.gloss-info { font-size:66%; line-height:20%; }
+					body { width: 50em; text-align: justify; margin-left: auto; margin-right: auto }
+					rtc.gloss-info { ruby-position: under; ruby-align: center; }
 					</style>
 					</head>
 					<body>

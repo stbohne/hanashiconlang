@@ -226,6 +226,9 @@ class HanashiFunctions {
         '''
     } 
     public static val em = new SurroundMarkupFunction("em", "<em>", "</em>")
+    public static val u = new SurroundMarkupFunction("u", "<u>", "</u>")
+    public static val b = new SurroundMarkupFunction("b", "<b>", "</b>")
+    public static val i = new SurroundMarkupFunction("i", "<i>", "</i>")
     public static val pt = new SurroundFunction("pt", "[", "]")
     public static val pm = new SurroundFunction("pm", "/", "/")
     public static val gm = new SurroundFunction("gm", "⟨", "⟩")

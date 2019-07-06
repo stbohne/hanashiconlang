@@ -23,19 +23,11 @@ class HanashiValidator extends AbstractHanashiValidator
     implements IHanashiFunctionValidationMessageAcceptor {
 	
 	public static val FUNCTION_DOES_NOT_EXIST = 'functionDoesNotExist'
-//
-//	@Check
-//	def checkGreetingStartsWithCapital(Greeting greeting) {
-//		if (!Character.isUpperCase(greeting.name.charAt(0))) {
-//			warning('Name should start with a capital', 
-//					HanashiPackage.Literals.GREETING__NAME,
-//					INVALID_NAME)
-//		}
-//	}
+	
+	val renderer = new HanashiRenderer(null)
 	
 	@Check
 	def checkCall(Call c) {
-		val renderer = new HanashiRenderer(EcoreUtil2.getContainerOfType(c, Document).language)
 		val func = c.function
 		val field = try {
 			HanashiFunctions.getDeclaredField(renderer.generateRichString(func, false).toString)

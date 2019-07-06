@@ -13,7 +13,4 @@ class HanashiExtensions {
 	static def language(Morpheme l) {
 		l.lexicon.language
 	}
-	static def language(Document d) {
-		EcoreUtil2.getAllContentsOfType(d, Language).head
-	}
 }
