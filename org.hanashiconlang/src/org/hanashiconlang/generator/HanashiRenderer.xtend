@@ -254,7 +254,7 @@ class HanashiRenderer {
 	    val pure = !gws.exists[it.items.exists[it instanceof GlossMorpheme]]
 	    var col = 0 
 		'''«FOR gw: gws.indexed SEPARATOR if (ruby) "<rb> </rb>"»«
-		  IF ruby»<rb>«ELSE»<td style="padding:0.1em" «
+		  IF ruby»<rb>«ELSE»<td «
 			  IF gw.key == gws.size - 1 && col != numCols - 1»colspan="«numCols-col»"«
 			  ELSEIF gw.value.skips.size > 0»colspan="«gw.value.skips.size + 1»"«ENDIF»>«ENDIF»«
 		  IF pure && gw.key == 0»“«ENDIF»«
@@ -376,8 +376,8 @@ class HanashiRenderer {
 	dispatch def CharSequence generateDeclaration(Section s, int depth) {
 		val classes = #["section"] + (richString2String(s.html.class_)?.toString?.split(" ") ?: newArrayOfSize(0))
 		'''
-		<section  id="section$«s.name»" class="«classes.join(" ")»>
-		<h«depth»">«title(s)»</h«depth»>
+		<section id="section$«s.name»" class="«classes.join(" ")»">
+		<h«depth»>«title(s)»</h«depth»>
 		«generatePostFuncs(generateRichString(s.text, true))»
 		«FOR p: s.parts»
 		«generateDeclaration(p, depth + 1)»
