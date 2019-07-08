@@ -35,6 +35,7 @@ import org.hanashiconlang.hanashi.Taxon
 import org.hanashiconlang.hanashi.Translated
 
 import static extension org.hanashiconlang.HanashiExtensions.*
+import org.hanashiconlang.hanashi.InlineGloss
 
 class HanashiRenderer {
 	var Language lang
@@ -143,17 +144,18 @@ class HanashiRenderer {
 		val found = m.find
 		Tuples.create(m.replaceAll("</p>\n<p>"), found)
 	}
+	dispatch def generateRichStringExpression(InlineGloss g, boolean trimLeft, boolean trimRight) {
+ 	    val classes = #["inline-gloss"] + (richString2String(g.html.class_)?.toString?.split(" ") ?: newArrayOfSize(0))
+        Tuples.create('''<ruby class="«classes.join(" ")»">«
+            generateGlossWordsText(g.line.words, g.line.words.size, true)»«
+            if (g.line.words.exists[items.exists[it instanceof GlossMorpheme]])
+                generateGlossWordsInfo(g.line.words, g.line.words.size, true)
+            »</ruby>''', false)
+    }
 	dispatch def generateRichStringExpression(Gloss g, boolean trimLeft, boolean trimRight) { 
 		val classes = #["gloss"] + (richString2String(g.html.class_)?.toString?.split(" ") ?: newArrayOfSize(0))
 		val numCols = g.lines.map[words.size].max
-		val gloss = if (g.lines.size == 1) {
-			val l = g.lines.get(0)
-			'''<ruby class="«classes.join(" ")»">«
-				generateGlossWordsText(l.words, numCols, true)»«
-				if (l.words.exists[items.exists[it instanceof GlossMorpheme]])
-					generateGlossWordsInfo(l.words, numCols, true)
-			»</ruby>'''
-		} else '''
+		Tuples.create('''
 			<table class="«classes.join(" ")»">
 			«FOR l: g.lines»
     		    <tr class="gloss-words">«generateGlossWordsText(l.words, numCols, false)»</tr>«
@@ -163,8 +165,7 @@ class HanashiRenderer {
 		    		»</tr>«
                 ENDIF»
 		    «ENDFOR»
-			</table>'''
-		Tuples.create(gloss, false)
+			</table>''', false)
 	}
 	dispatch def generateRichStringExpression(Call c, boolean trimLeft, boolean trimRight) {
 	    val func = richString2String(c.function).toString

@@ -62,7 +62,8 @@ RichStringRight:
 	{RichStringLiteral} value=TEXTRIGHT
 ;
 RichStringPart hidden(WS, ML_COMMENT, SL_COMMENT):
-	=> "gl" Gloss
+	=> "gl" InlineGloss
+|	=> "gloss" Gloss
 |	=> "table" Table
 |	=> "fn" Footnote
 |	=> "translated" Translated
@@ -90,6 +91,9 @@ TableCol:
 	{TableCol} (header?="th" | "td") text=RichStringOrName (skips+=">")*
 ;
 
+InlineGloss:
+    {InlineGloss} html=HtmlData line=GlossLine
+;
 Gloss:
 	{Gloss} (name=Name)? meta=MetaData html=HtmlData 
 			lines+=GlossLine ("\\\\" lines+=GlossLine)* "\\\\"?
@@ -98,7 +102,7 @@ GlossLine hidden(ML_COMMENT, SL_COMMENT):
 	language=[Language|Name] ":" WS* (words+=GlossWord (WS+ words+=GlossWord)*)? WS*
 ;
 GlossWord:
-	items+=GlossItem ("~"? items+=GlossItem)* 
+	items+=GlossItem ((WS* "~" WS*)? items+=GlossItem)* 
 	(skips+=GlossSkip)*
 ;
 GlossItem:
