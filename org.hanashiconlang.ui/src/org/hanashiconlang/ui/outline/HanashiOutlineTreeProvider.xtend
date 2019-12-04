@@ -10,6 +10,7 @@ import org.hanashiconlang.hanashi.HanashiPackage
 import org.hanashiconlang.hanashi.HtmlData
 import org.hanashiconlang.hanashi.MetaData
 import org.hanashiconlang.hanashi.RichString
+import org.hanashiconlang.hanashi.ArticlePart
 
 /**
  * Customization of the default outline structure.
@@ -20,9 +21,9 @@ class HanashiOutlineTreeProvider extends DefaultOutlineTreeProvider {
 
 	protected override void _createChildren(IOutlineNode parentNode, EObject modelElement) {
 		for (EObject childElement : modelElement.eContents.filter[
-			!(it instanceof RichString || it instanceof MetaData || it instanceof HtmlData)
+			!(it instanceof RichString || it instanceof MetaData || it instanceof HtmlData || it instanceof ArticlePart)
 		])
-			createNode(parentNode, childElement);
+		createNode(parentNode, childElement);
 	}
 
 	protected override boolean _isLeaf(EObject modelElement) {
