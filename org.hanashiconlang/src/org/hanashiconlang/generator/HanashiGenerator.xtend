@@ -8,6 +8,12 @@ import org.eclipse.xtext.generator.AbstractGenerator
 import org.eclipse.xtext.generator.IFileSystemAccess2
 import org.eclipse.xtext.generator.IGeneratorContext
 import org.hanashiconlang.hanashi.Article
+import java.util.Map
+import java.util.Collection
+import java.util.HashMap
+import org.hanashiconlang.hanashi.Taxon
+import java.util.ArrayList
+import org.hanashiconlang.hanashi.Morpheme
 
 /**
  * Generates code from your model files on save.
@@ -40,10 +46,19 @@ class HanashiGenerator extends AbstractGenerator {
 //	}
 	
 	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
+		
+		var morphemesByTaxon = new HashMap<Taxon, ArrayList<Morpheme>>()
+		for (m : resource.allContents.filter(Morpheme).toIterable)
+			for (t : m.taxons) {
+				if (!morphemesByTaxon.containsKey(t.target))
+					morphemesByTaxon.put(t.target, new ArrayList())
+				morphemesByTaxon.get(t.target).add(m)
+			}
+		
 		val baseName = resource.URI.trimFileExtension.lastSegment
 		for (article : resource.allContents.filter(Article).toIterable) 
 			for (lang : article.languages) {
-				val renderer = new HanashiRenderer(lang) 
+				val renderer = new HanashiRenderer(lang, morphemesByTaxon) 
 				fsa.generateFile(baseName + "." + article.name + '.' + lang.name + '.html', '''
 					<html>
 					<head>
@@ -74,3 +89,4 @@ class HanashiGenerator extends AbstractGenerator {
 	}
 
 }
+

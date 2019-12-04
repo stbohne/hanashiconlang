@@ -43,9 +43,15 @@ class HanashiRenderer {
 	var footnoteHumanCounter = 1
 	var footnoteGlobalCounter = 0
 	val footnoteHash = new HashMap<String, Pair<Integer, Integer>>()
+	val HashMap<Taxon, ArrayList<Morpheme>> morphemesByTaxon
 	
 	new(Language lang) {
 		this.lang = lang
+		this.morphemesByTaxon = null
+	}
+	new(Language lang, HashMap<Taxon, ArrayList<Morpheme>> morphemesByTaxon) {
+		this.lang = lang
+		this.morphemesByTaxon = morphemesByTaxon
 	}
 	
 	def CharSequence formString(Morpheme l) {
@@ -69,6 +75,10 @@ class HanashiRenderer {
 		]?.text) ?: ""
 	}
 	
+	def CharSequence title(Language l) {
+	    if (l.title !== null) generateRichString(l.title, false)
+	    else l.name
+	}
 	def CharSequence title(Section s) {
 	    if (s.title !== null) generateRichString(s.title, false)
 	    else s.name
@@ -421,13 +431,23 @@ class HanashiRenderer {
 		</div>''')
 	}
 
+    def String taxonParentsText(Taxon t) {
+    	val parent = EcoreUtil2.getContainerOfType(t.eContainer, Taxon)
+		'''«IF parent !== null»«taxonParentsText(parent)»<a href="#taxon$«parent.name»">«parent.name»</a> / «ENDIF»'''
+    }
 	def CharSequence generateTaxon(Taxon t, int depth) {
         val classes = #["taxon"] + (richString2String(t.html.class_)?.toString?.split(" ") ?: newArrayOfSize(0))
-        val parent = EcoreUtil2.getContainerOfType(t.eContainer, Taxon)
+        val morphemes = morphemesByTaxon.getOrDefault(t, new ArrayList()).groupBy[it.language]
 		generatePostFuncs('''<div class="«classes.join(" ")»">
-		<b id="taxon$«t.name»">Taxon «t.name»</b>
-		«IF parent !== null» <a href="#taxon$«parent.name»">«parent.name»</a>«ENDIF»
+		<b id="taxon$«t.name»">Taxon</b> «taxonParentsText(t)»<b>«t.name»</b>
 		«generateRichString(t.text, false)»
+		«FOR l: morphemes.entrySet BEFORE "<ul>" AFTER "</ul>"»
+			<li><i>«title(l.key)»</i>
+			«FOR m: l.value»
+				<br/><a href="#morpheme$«m.language.name»$«m.name»">«title(m)»</a> - «translationString(m)»
+			«ENDFOR»
+			</li>
+		«ENDFOR»
 		«FOR tx: t.taxons»«generateTaxon(tx, depth + 1)»«ENDFOR»
 		</div>''')
 	}
